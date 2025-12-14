@@ -250,11 +250,52 @@ export default function BuilderPage() {
       if (over.id === 'canvas-root') {
         updateElementsWithHistory([...elements, newElement])
       } else {
-        // 拖放到现有元素内
-        const targetElement = findElementById(elements, over.id as string)
-        if (targetElement) {
-          const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
-          updateElementsWithHistory(newElements)
+        // 检查是否是拖拽到 tab 内容区域
+        const tabContentMatch = String(over.id).match(/^tab-content-(.+)-(.+)$/)
+        if (tabContentMatch) {
+          const [, tabsElementId, tabKey] = tabContentMatch
+          
+          const updateTabsItemsRecursive = (els: Element[], targetId: string, targetTabKey: string, newEl: Element): Element[] => {
+            return els.map(el => {
+              if (el.id === targetId && el.props?.items) {
+                const updatedItems = el.props.items.map((item: any) => {
+                  if (item.key === targetTabKey) {
+                    return {
+                      ...item,
+                      children: Array.isArray(item.children) 
+                        ? [...item.children, newEl]
+                        : [newEl],
+                    }
+                  }
+                  return item
+                })
+                return {
+                  ...el,
+                  props: {
+                    ...el.props,
+                    items: updatedItems,
+                  },
+                }
+              }
+              if (el.children) {
+                return {
+                  ...el,
+                  children: updateTabsItemsRecursive(el.children, targetId, targetTabKey, newEl),
+                }
+              }
+              return el
+            })
+          }
+          
+          const updatedElements = updateTabsItemsRecursive(elements, tabsElementId, tabKey, newElement)
+          updateElementsWithHistory(updatedElements)
+        } else {
+          // 拖放到现有元素内
+          const targetElement = findElementById(elements, over.id as string)
+          if (targetElement) {
+            const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
+            updateElementsWithHistory(newElements)
+          }
         }
       }
     }
@@ -279,11 +320,52 @@ export default function BuilderPage() {
       if (over.id === 'canvas-root') {
         updateElementsWithHistory([...elements, newElement])
       } else {
-        // 拖放到现有元素内
-        const targetElement = findElementById(elements, over.id as string)
-        if (targetElement) {
-          const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
-          updateElementsWithHistory(newElements)
+        // 检查是否是拖拽到 tab 内容区域
+        const tabContentMatch = String(over.id).match(/^tab-content-(.+)-(.+)$/)
+        if (tabContentMatch) {
+          const [, tabsElementId, tabKey] = tabContentMatch
+          
+          const updateTabsItemsRecursive = (els: Element[], targetId: string, targetTabKey: string, newEl: Element): Element[] => {
+            return els.map(el => {
+              if (el.id === targetId && el.props?.items) {
+                const updatedItems = el.props.items.map((item: any) => {
+                  if (item.key === targetTabKey) {
+                    return {
+                      ...item,
+                      children: Array.isArray(item.children) 
+                        ? [...item.children, newEl]
+                        : [newEl],
+                    }
+                  }
+                  return item
+                })
+                return {
+                  ...el,
+                  props: {
+                    ...el.props,
+                    items: updatedItems,
+                  },
+                }
+              }
+              if (el.children) {
+                return {
+                  ...el,
+                  children: updateTabsItemsRecursive(el.children, targetId, targetTabKey, newEl),
+                }
+              }
+              return el
+            })
+          }
+          
+          const updatedElements = updateTabsItemsRecursive(elements, tabsElementId, tabKey, newElement)
+          updateElementsWithHistory(updatedElements)
+        } else {
+          // 拖放到现有元素内
+          const targetElement = findElementById(elements, over.id as string)
+          if (targetElement) {
+            const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
+            updateElementsWithHistory(newElements)
+          }
         }
       }
     }
@@ -332,6 +414,57 @@ export default function BuilderPage() {
         return
       }
 
+      // 检查是否是拖拽到 tab 内容区域
+      const tabContentMatch = String(over.id).match(/^tab-content-(.+)-(.+)$/)
+      if (tabContentMatch) {
+        // 拖放到 tab 内容区域
+        const [, tabsElementId, tabKey] = tabContentMatch
+        const tabsElement = findElementById(elements, tabsElementId)
+        
+        if (tabsElement && tabsElement.props?.items) {
+          // 先移除元素
+          const elementsWithoutDragged = removeElement(elements)
+          
+          // 更新 tabs 的 items，添加元素到对应的 tab
+          const updateTabs = (els: Element[]): Element[] => {
+            return els.map(el => {
+              if (el.id === tabsElementId && el.props?.items) {
+                const updatedItems = el.props.items.map((item: any) => {
+                  if (item.key === tabKey) {
+                    return {
+                      ...item,
+                      children: Array.isArray(item.children) 
+                        ? [...item.children, draggedElement]
+                        : [draggedElement],
+                    }
+                  }
+                  return item
+                })
+                return {
+                  ...el,
+                  props: {
+                    ...el.props,
+                    items: updatedItems,
+                  },
+                }
+              }
+              if (el.children) {
+                return {
+                  ...el,
+                  children: updateTabs(el.children),
+                }
+              }
+              return el
+            })
+          }
+          
+          const updatedElements = updateTabs(elementsWithoutDragged)
+          updateElementsWithHistory(updatedElements)
+          setSelectedElementId(draggedElement.id)
+          return
+        }
+      }
+      
       // 拖放到其他元素内
       const targetElement = findElementById(elements, over.id as string)
       if (targetElement) {
@@ -753,6 +886,40 @@ export default function BuilderPage() {
         
         <div className="flex-1" />
         <button
+          onClick={() => {
+            if (pageId) {
+              window.open(`/builder/preview?id=${pageId}`, '_blank')
+            } else {
+              // 如果没有保存的页面，先提示保存
+              alert('请先保存页面后再预览')
+            }
+          }}
+          disabled={!pageId}
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            />
+          </svg>
+          预览
+        </button>
+        <button
           onClick={handleSave}
           disabled={saving}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -866,7 +1033,7 @@ function getDefaultProps(type: Element['type']): Record<string, any> {
     'a-col': { span: 12 },
     'a-layout': {},
     'a-menu': {},
-    'a-tabs': {},
+    'a-tabs': { items: [] },
     'a-collapse': {},
     'a-timeline': {},
     'a-list': {},

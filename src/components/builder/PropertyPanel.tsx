@@ -44,6 +44,7 @@ import {
   InfoCircleOutlined,
   QuestionCircleOutlined,
   WarningOutlined,
+  CopyOutlined,
 } from '@ant-design/icons'
 
 // 图标映射表
@@ -1045,17 +1046,41 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                     <div key={tab.key || index} className="p-2 border border-gray-200 rounded bg-gray-50">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-medium text-gray-600">Tab {index + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newItems = tabsItems.filter((_: any, i: number) => i !== index)
-                            updateProps('items', newItems)
-                          }}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
-                          title="删除"
-                        >
-                          {React.createElement(DeleteOutlined, { className: 'text-xs' })}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // 复制当前tab并插入到当前tab之后
+                              const copiedTab = {
+                                ...tab,
+                                key: `tab-${Date.now()}`,
+                                label: `${tab.label || 'Tab'} (副本)`,
+                                // 如果children是数组，需要深拷贝
+                                children: Array.isArray(tab.children)
+                                  ? JSON.parse(JSON.stringify(tab.children))
+                                  : tab.children,
+                              }
+                              const newItems = [...tabsItems]
+                              newItems.splice(index + 1, 0, copiedTab)
+                              updateProps('items', newItems)
+                            }}
+                            className="p-1 text-blue-500 hover:bg-blue-50 rounded"
+                            title="复制此Tab"
+                          >
+                            {React.createElement(CopyOutlined, { className: 'text-xs' })}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newItems = tabsItems.filter((_: any, i: number) => i !== index)
+                              updateProps('items', newItems)
+                            }}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                            title="删除"
+                          >
+                            {React.createElement(DeleteOutlined, { className: 'text-xs' })}
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <div>
@@ -1087,33 +1112,22 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Tab 内容（文本）</label>
-                          <textarea
-                            value={
-                              Array.isArray(tab.children)
-                                ? ''
-                                : typeof tab.children === 'string'
-                                ? tab.children
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const newItems = [...tabsItems]
-                              // 如果 children 是数组（Element 数组），则保持数组；否则设置为文本
-                              newItems[index] = {
-                                ...tab,
-                                children: Array.isArray(tab.children) ? tab.children : e.target.value || null,
-                              }
-                              updateProps('items', newItems)
-                            }}
-                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                            placeholder="Tab 内容（文本）"
-                            rows={2}
-                            disabled={Array.isArray(tab.children)}
-                          />
-                          {Array.isArray(tab.children) && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              此 Tab 包含 {tab.children.length} 个子元素，请在画布中编辑
-                            </p>
+                          <label className="block text-xs text-gray-600 mb-1">Tab 内容</label>
+                          {Array.isArray(tab.children) && tab.children.length > 0 ? (
+                            <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <p className="text-blue-800 font-medium mb-1">
+                                此 Tab 包含 {tab.children.length} 个子元素
+                              </p>
+                              <p className="text-blue-600 text-xs">
+                                请在画布中直接拖拽组件到 Tab 内容区域进行编辑
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="p-2 bg-gray-50 border border-gray-200 rounded text-xs">
+                              <p className="text-gray-600">
+                                在画布中拖拽组件到此 Tab 内容区域即可添加内容
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1395,6 +1409,38 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                 value={element.props?.icon || ''}
                 onChange={(value) => updateProps('icon', value || undefined)}
               />
+
+              {/* 事件配置 */}
+              <div className="pt-4 border-t border-gray-200 space-y-4">
+                <h3 className="text-xs font-semibold text-gray-700 mb-2">事件配置</h3>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">点击事件名称</label>
+                  <input
+                    type="text"
+                    value={element.props?.onClickEventName || ''}
+                    onChange={(e) => updateProps('onClickEventName', e.target.value || undefined)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    placeholder="例如: handleButtonClick"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    设置后，点击按钮时会触发该事件并打印日志
+                  </p>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={element.props?.enableLog === true}
+                      onChange={(e) => updateProps('enableLog', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs font-medium text-gray-700">启用日志打印</span>
+                  </label>
+                  <p className="text-xs text-gray-500 ml-6 mt-0.5">
+                    启用后，点击按钮时会在控制台打印日志
+                  </p>
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="style" className="mt-0 p-4 space-y-4">
