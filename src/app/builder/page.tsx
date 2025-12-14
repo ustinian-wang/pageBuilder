@@ -399,9 +399,97 @@ export default function BuilderPage() {
               console.log('[拖拽] 通过 updateElement 更新 tabs items（拖到tabs本身），tabsElementId:', tabsElement.id, 'targetTabKey:', targetTabKey)
             }
           } else {
-            // 拖放到现有元素内
-            if (tabsElement) {
-              const newElements = addElementToParentInternal(elements, tabsElement.id, newElement)
+            // 检查是否是拖拽到 tabs 下的 container
+            const targetElement = findElementById(elements, over.id as string)
+            if (targetElement && targetElement.type === 'container') {
+              // 查找 container 所在的 tabs 和 tab
+              const findTabsForContainer = (els: Element[], containerId: string): { tabsElement: Element | null; tabKey: string | null } => {
+                for (const el of els) {
+                  // 检查是否是 tabs 元素
+                  if (el.type === 'a-tabs' && el.props?.items && Array.isArray(el.props.items)) {
+                    for (const item of el.props.items) {
+                      if (Array.isArray(item.children)) {
+                        // 检查 container 是否在这个 tab 的 children 中
+                        const containerInTab = item.children.find((child: Element) => child.id === containerId)
+                        if (containerInTab) {
+                          return { tabsElement: el, tabKey: item.key }
+                        }
+                        // 递归查找 container 的 children 中
+                        for (const child of item.children) {
+                          if (child.type === 'container' && child.children) {
+                            const found = findElementById(child.children, containerId)
+                            if (found) {
+                              return { tabsElement: el, tabKey: item.key }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  // 递归查找子元素
+                  if (el.children) {
+                    const result = findTabsForContainer(el.children, containerId)
+                    if (result.tabsElement) {
+                      return result
+                    }
+                  }
+                }
+                return { tabsElement: null, tabKey: null }
+              }
+              
+              const { tabsElement: foundTabsElement, tabKey } = findTabsForContainer(elements, targetElement.id)
+              if (foundTabsElement && tabKey && foundTabsElement.type === 'a-tabs' && foundTabsElement.props?.items) {
+                // 更新 tabs 的 items，将新元素添加到 container 的 children 中
+                const currentItems = foundTabsElement.props.items
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    // 查找 container 并更新它的 children
+                    const updatedTabChildren = item.children.map((child: Element) => {
+                      if (child.id === targetElement.id) {
+                        return {
+                          ...child,
+                          children: [...(child.children || []), newElement],
+                        }
+                      }
+                      // 递归查找 container 的 children 中
+                      if (child.type === 'container' && child.children) {
+                        const found = findElementById(child.children, targetElement.id)
+                        if (found) {
+                          return {
+                            ...child,
+                            children: child.children.map((c: Element) =>
+                              c.id === targetElement.id
+                                ? { ...c, children: [...(c.children || []), newElement] }
+                                : c
+                            ),
+                          }
+                        }
+                      }
+                      return child
+                    })
+                    return {
+                      ...item,
+                      children: updatedTabChildren,
+                    }
+                  }
+                  return item
+                })
+                
+                // 使用 updateElement 更新
+                updateElement(foundTabsElement.id, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+                console.log('[拖拽] 通过 updateElement 更新 tabs items（拖到container），tabsElementId:', foundTabsElement.id, 'tabKey:', tabKey, 'containerId:', targetElement.id)
+                return
+              }
+            }
+            
+            // 拖放到现有元素内（普通情况）
+            const targetElementForNormal = findElementById(elements, over.id as string)
+            if (targetElementForNormal) {
+              const newElements = addElementToParentInternal(elements, targetElementForNormal.id, newElement)
               updateElementsWithHistory(newElements)
             }
           }
@@ -510,9 +598,97 @@ export default function BuilderPage() {
               updateElementsWithHistory(updatedElements)
             }
           } else {
-            // 拖放到现有元素内
-            if (tabsElement) {
-              const newElements = addElementToParentInternal(elements, tabsElement.id, newElement)
+            // 检查是否是拖拽到 tabs 下的 container（自定义模块）
+            const targetElement = findElementById(elements, over.id as string)
+            if (targetElement && targetElement.type === 'container') {
+              // 查找 container 所在的 tabs 和 tab
+              const findTabsForContainer = (els: Element[], containerId: string): { tabsElement: Element | null; tabKey: string | null } => {
+                for (const el of els) {
+                  // 检查是否是 tabs 元素
+                  if (el.type === 'a-tabs' && el.props?.items && Array.isArray(el.props.items)) {
+                    for (const item of el.props.items) {
+                      if (Array.isArray(item.children)) {
+                        // 检查 container 是否在这个 tab 的 children 中
+                        const containerInTab = item.children.find((child: Element) => child.id === containerId)
+                        if (containerInTab) {
+                          return { tabsElement: el, tabKey: item.key }
+                        }
+                        // 递归查找 container 的 children 中
+                        for (const child of item.children) {
+                          if (child.type === 'container' && child.children) {
+                            const found = findElementById(child.children, containerId)
+                            if (found) {
+                              return { tabsElement: el, tabKey: item.key }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  // 递归查找子元素
+                  if (el.children) {
+                    const result = findTabsForContainer(el.children, containerId)
+                    if (result.tabsElement) {
+                      return result
+                    }
+                  }
+                }
+                return { tabsElement: null, tabKey: null }
+              }
+              
+              const { tabsElement: foundTabsElement, tabKey } = findTabsForContainer(elements, targetElement.id)
+              if (foundTabsElement && tabKey && foundTabsElement.type === 'a-tabs' && foundTabsElement.props?.items) {
+                // 更新 tabs 的 items，将新元素添加到 container 的 children 中
+                const currentItems = foundTabsElement.props.items
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    // 查找 container 并更新它的 children
+                    const updatedTabChildren = item.children.map((child: Element) => {
+                      if (child.id === targetElement.id) {
+                        return {
+                          ...child,
+                          children: [...(child.children || []), newElement],
+                        }
+                      }
+                      // 递归查找 container 的 children 中
+                      if (child.type === 'container' && child.children) {
+                        const found = findElementById(child.children, targetElement.id)
+                        if (found) {
+                          return {
+                            ...child,
+                            children: child.children.map((c: Element) =>
+                              c.id === targetElement.id
+                                ? { ...c, children: [...(c.children || []), newElement] }
+                                : c
+                            ),
+                          }
+                        }
+                      }
+                      return child
+                    })
+                    return {
+                      ...item,
+                      children: updatedTabChildren,
+                    }
+                  }
+                  return item
+                })
+                
+                // 使用 updateElement 更新
+                updateElement(foundTabsElement.id, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+                console.log('[拖拽] 通过 updateElement 更新 tabs items（拖到container，自定义模块），tabsElementId:', foundTabsElement.id, 'tabKey:', tabKey, 'containerId:', targetElement.id)
+                return
+              }
+            }
+            
+            // 拖放到现有元素内（普通情况）
+            const targetElementForNormal = findElementById(elements, over.id as string)
+            if (targetElementForNormal) {
+              const newElements = addElementToParentInternal(elements, targetElementForNormal.id, newElement)
               updateElementsWithHistory(newElements)
             }
           }
@@ -618,6 +794,112 @@ export default function BuilderPage() {
       // 拖放到其他元素内
       const targetElement = findElementById(elements, over.id as string)
       if (targetElement) {
+        // 检查是否是拖拽到 tabs 下的 container
+        if (targetElement.type === 'container') {
+          // 查找 container 所在的 tabs 和 tab
+          const findTabsForContainer = (els: Element[], containerId: string): { tabsElement: Element | null; tabKey: string | null } => {
+            for (const el of els) {
+              // 检查是否是 tabs 元素
+              if (el.type === 'a-tabs' && el.props?.items && Array.isArray(el.props.items)) {
+                for (const item of el.props.items) {
+                  if (Array.isArray(item.children)) {
+                    // 检查 container 是否在这个 tab 的 children 中
+                    const containerInTab = item.children.find((child: Element) => child.id === containerId)
+                    if (containerInTab) {
+                      return { tabsElement: el, tabKey: item.key }
+                    }
+                    // 递归查找 container 的 children 中
+                    for (const child of item.children) {
+                      if (child.type === 'container' && child.children) {
+                        const found = findElementById(child.children, containerId)
+                        if (found) {
+                          return { tabsElement: el, tabKey: item.key }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              // 递归查找子元素
+              if (el.children) {
+                const result = findTabsForContainer(el.children, containerId)
+                if (result.tabsElement) {
+                  return result
+                }
+              }
+            }
+            return { tabsElement: null, tabKey: null }
+          }
+          
+          const { tabsElement: foundTabsElement, tabKey } = findTabsForContainer(elements, targetElement.id)
+          if (foundTabsElement && tabKey && foundTabsElement.type === 'a-tabs' && foundTabsElement.props?.items) {
+            // 先移除元素
+            const elementsWithoutDragged = removeElement(elements)
+            
+            // 更新 tabs 的 items，将拖拽的元素添加到 container 的 children 中
+            const updateTabsWithContainer = (els: Element[]): Element[] => {
+              return els.map(el => {
+                if (el.id === foundTabsElement.id && el.props?.items) {
+                  const updatedItems = el.props.items.map((item: any) => {
+                    if (item.key === tabKey && Array.isArray(item.children)) {
+                      // 查找 container 并更新它的 children
+                      const updatedTabChildren = item.children.map((child: Element) => {
+                        if (child.id === targetElement.id) {
+                          return {
+                            ...child,
+                            children: [...(child.children || []), draggedElement],
+                          }
+                        }
+                        // 递归查找 container 的 children 中
+                        if (child.type === 'container' && child.children) {
+                          const found = findElementById(child.children, targetElement.id)
+                          if (found) {
+                            return {
+                              ...child,
+                              children: child.children.map((c: Element) =>
+                                c.id === targetElement.id
+                                  ? { ...c, children: [...(c.children || []), draggedElement] }
+                                  : c
+                              ),
+                            }
+                          }
+                        }
+                        return child
+                      })
+                      return {
+                        ...item,
+                        children: updatedTabChildren,
+                      }
+                    }
+                    return item
+                  })
+                  return {
+                    ...el,
+                    props: {
+                      ...el.props,
+                      items: updatedItems,
+                    },
+                  }
+                }
+                if (el.children) {
+                  return {
+                    ...el,
+                    children: updateTabsWithContainer(el.children),
+                  }
+                }
+                return el
+              })
+            }
+            
+            const updatedElements = updateTabsWithContainer(elementsWithoutDragged)
+            updateElementsWithHistory(updatedElements)
+            setSelectedElementId(draggedElement.id)
+            console.log('[拖拽] 通过 updateTabsWithContainer 更新 tabs items（拖到container，画布元素），tabsElementId:', foundTabsElement.id, 'tabKey:', tabKey, 'containerId:', targetElement.id)
+            return
+          }
+        }
+        
+        // 普通情况：拖放到现有元素内
         // 先移除元素
         const elementsWithoutDragged = removeElement(elements)
         
