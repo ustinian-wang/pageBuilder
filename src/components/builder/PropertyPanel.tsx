@@ -7,6 +7,7 @@ import { antdComponentTypes, getAntdDefaultProps, isAntdComponent } from './prop
 import { IconSelector } from './property-panel/panels/IconSelector'
 import { StylePanel } from './property-panel/panels/StylePanel'
 import { renderCommonAntdBasicPanel } from './property-panel/panels/antd/CommonAntdPanel'
+import { TablePanel } from './property-panel/panels/antd/TablePanel'
 import { PlusOutlined, DeleteOutlined, CopyOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
 
 interface PropertyPanelProps {
@@ -409,6 +410,37 @@ export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab,
     )
   }
 
+  // 表格组件使用专门的配置面板
+  if (element.type === 'a-table') {
+    const panelProps = {
+      element,
+      updateProps,
+      updateStyle,
+      onUpdate,
+      handleTypeChange,
+    }
+
+    return (
+      <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full" data-property-panel>
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-gray-700">属性面板</h2>
+        </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col flex-1 min-h-0">
+          <div className="px-4 pt-4 border-b border-gray-200 flex-shrink-0">
+            <TabsList className="w-full">
+              <TabsTrigger value="basic" className="flex-1">基础设置</TabsTrigger>
+              <TabsTrigger value="style" className="flex-1">样式设置</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <TablePanel {...panelProps} />
+            <StylePanel {...panelProps} isTable={true} />
+          </div>
+        </Tabs>
+      </div>
+    )
+  }
+
   // 其他 Ant Design 组件使用通用面板
   if (isAntdComponent(element.type)) {
     const panelProps = {
@@ -433,7 +465,7 @@ export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab,
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
             {renderCommonAntdBasicPanel(panelProps)}
-            <StylePanel {...panelProps} isTable={element.type === 'a-table'} />
+            <StylePanel {...panelProps} isTable={false} />
           </div>
         </Tabs>
       </div>

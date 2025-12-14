@@ -1113,6 +1113,24 @@ function getDefaultProps(type: Element['type']): Record<string, any> {
     'a-layout': {},
     'a-menu': {},
     'a-tabs': { items: [] },
+    'a-table': {
+      columns: [
+        { title: '姓名', dataIndex: 'name', key: 'name' },
+        { title: '年龄', dataIndex: 'age', key: 'age' },
+        { title: '地址', dataIndex: 'address', key: 'address' },
+      ],
+      dataSource: [
+        { key: '1', name: '张三', age: 32, address: '北京市' },
+        { key: '2', name: '李四', age: 42, address: '上海市' },
+        { key: '3', name: '王五', age: 28, address: '广州市' },
+      ],
+      pagination: {
+        pageSize: 10,
+        showSizeChanger: true,
+        showTotal: true,
+        showQuickJumper: false,
+      },
+    },
     'a-collapse': {},
     'a-timeline': {},
     'a-list': {},

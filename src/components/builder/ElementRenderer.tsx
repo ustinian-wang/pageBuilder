@@ -1765,7 +1765,7 @@ export function ElementRenderer({
       const tableProps = { ...(element.props || {}) }
       
       // 确保 columns 和 dataSource 存在
-      if (!tableProps.columns) {
+      if (!tableProps.columns || !Array.isArray(tableProps.columns) || tableProps.columns.length === 0) {
         tableProps.columns = [
           { title: '姓名', dataIndex: 'name', key: 'name' },
           { title: '年龄', dataIndex: 'age', key: 'age' },
@@ -1773,7 +1773,7 @@ export function ElementRenderer({
         ]
       }
       
-      if (!tableProps.dataSource) {
+      if (!tableProps.dataSource || !Array.isArray(tableProps.dataSource) || tableProps.dataSource.length === 0) {
         tableProps.dataSource = [
           { key: '1', name: '张三', age: 32, address: '北京市' },
           { key: '2', name: '李四', age: 42, address: '上海市' },
@@ -1784,6 +1784,47 @@ export function ElementRenderer({
       // 设置默认 rowKey
       if (!tableProps.rowKey) {
         tableProps.rowKey = 'key'
+      }
+      
+      // 处理分页配置
+      // 如果 pagination 为 false，则不显示分页
+      // 如果 pagination 为对象，使用该配置
+      // 如果 pagination 为 undefined，使用默认分页配置
+      if (tableProps.pagination === false) {
+        // 不显示分页，保持 false
+      } else if (!tableProps.pagination) {
+        // 默认启用分页
+        // 将 showTotal 设置为函数而不是 true，以避免 "showTotal is not a function" 错误
+        tableProps.pagination = {
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total: number, range: [number, number]) => 
+            `${range[0]}-${range[1]} of ${total} items`,
+          showQuickJumper: false,
+        }
+      } else if (tableProps.pagination && typeof tableProps.pagination === 'object') {
+        // 确保 pagination 对象有合理的默认值
+        // 处理 showTotal: 如果是 true 或任何非函数值（除了 false），转换为默认函数
+        let showTotalValue = tableProps.pagination.showTotal
+        
+        // 如果 showTotal 是 true 或不是函数/false，转换为默认函数以避免 "showTotal is not a function" 错误
+        if (showTotalValue === true || (showTotalValue !== false && typeof showTotalValue !== 'function')) {
+          showTotalValue = (total: number, range: [number, number]) => 
+            `${range[0]}-${range[1]} of ${total} items`
+        }
+        // 如果 showTotal 是 false，保持 false
+        // 如果 showTotal 已经是函数，保持函数
+        
+        tableProps.pagination = {
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: false,
+          ...tableProps.pagination,
+          // 确保 showTotal 是函数或 false，永远不会是 true
+          showTotal: showTotalValue !== undefined ? showTotalValue : 
+            ((total: number, range: [number, number]) => 
+              `${range[0]}-${range[1]} of ${total} items`),
+        }
       }
       
       content = (
