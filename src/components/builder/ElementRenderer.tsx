@@ -246,6 +246,7 @@ const TabContentRenderer = ({
   elementId,
   tabKey, 
   tabItem,
+  parentElement,
   selectedElementId,
   onSelect,
   onUpdate,
@@ -255,6 +256,7 @@ const TabContentRenderer = ({
   elementId: string
   tabKey: string
   tabItem: any
+  parentElement?: Element
   selectedElementId: string | null
   onSelect: (id: string | null) => void
   onUpdate: (id: string, updates: Partial<Element>) => void
@@ -460,17 +462,51 @@ const TabContentRenderer = ({
                 })
               }}
               onDelete={(childId) => {
-                // 删除 tab 内容中的子元素
+                // 递归删除函数：从元素数组中删除指定ID的元素（包括嵌套的子元素）
+                const removeElementFromArray = (els: Element[]): Element[] => {
+                  return els
+                    .filter(el => el.id !== childId)
+                    .map(el => {
+                      // 递归处理子元素
+                      let updatedEl = { ...el }
+                      if (el.children) {
+                        updatedEl = {
+                          ...updatedEl,
+                          children: removeElementFromArray(el.children),
+                        }
+                      }
+                      return updatedEl
+                    })
+                }
+
+                // 从最新的 element 中获取 items（通过 onUpdate 回调获取最新数据）
+                // 由于 TabContentRenderer 没有直接访问 element，我们需要通过 onUpdate 来更新
+                // 这里使用一个特殊的更新方式：先获取当前 items，然后删除
                 const currentItems = (tabItem as any).__parentItems || []
                 const updatedItems = currentItems.map((item: any) => {
                   if (item.key === tabKey && Array.isArray(item.children)) {
-                    return {
-                      ...item,
-                      children: item.children.filter((c: Element) => c.id !== childId),
+                    // 检查是否是 Element 对象数组
+                    const isElementArray = item.children.every(
+                      (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
+                    )
+                    if (isElementArray) {
+                      // 使用递归删除函数
+                      const updatedChildren = removeElementFromArray(item.children)
+                      return {
+                        ...item,
+                        children: updatedChildren,
+                      }
+                    } else {
+                      // 如果不是 Element 数组，使用简单的 filter
+                      return {
+                        ...item,
+                        children: item.children.filter((c: any) => c?.id !== childId),
+                      }
                     }
                   }
                   return item
                 })
+                
                 onUpdate(elementId, {
                   props: {
                     items: updatedItems,
@@ -614,16 +650,49 @@ const TabContentRenderer = ({
                 })
               }}
               onDelete={(childId) => {
-                const currentItems = (tabItem as any).__parentItems || []
+                // 递归删除函数：从元素数组中删除指定ID的元素（包括嵌套的子元素）
+                const removeElementFromArray = (els: Element[]): Element[] => {
+                  return els
+                    .filter(el => el.id !== childId)
+                    .map(el => {
+                      // 递归处理子元素
+                      let updatedEl = { ...el }
+                      if (el.children) {
+                        updatedEl = {
+                          ...updatedEl,
+                          children: removeElementFromArray(el.children),
+                        }
+                      }
+                      return updatedEl
+                    })
+                }
+
+                // 优先使用 parentElement 中的最新 items，如果没有则使用 __parentItems
+                const currentItems = parentElement?.props?.items || (tabItem as any).__parentItems || []
                 const updatedItems = currentItems.map((item: any) => {
                   if (item.key === tabKey && Array.isArray(item.children)) {
-                    return {
-                      ...item,
-                      children: item.children.filter((c: Element) => c.id !== childId),
+                    // 检查是否是 Element 对象数组
+                    const isElementArray = item.children.every(
+                      (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
+                    )
+                    if (isElementArray) {
+                      // 使用递归删除函数
+                      const updatedChildren = removeElementFromArray(item.children)
+                      return {
+                        ...item,
+                        children: updatedChildren,
+                      }
+                    } else {
+                      // 如果不是 Element 数组，使用简单的 filter
+                      return {
+                        ...item,
+                        children: item.children.filter((c: any) => c?.id !== childId),
+                      }
                     }
                   }
                   return item
                 })
+                
                 onUpdate(elementId, {
                   props: {
                     items: updatedItems,
@@ -1379,6 +1448,7 @@ export function ElementRenderer({
             elementId={element.id}
             tabKey={tabItem.key}
             tabItem={tabItemWithParent}
+            parentElement={element}
             selectedElementId={selectedElementId}
             onSelect={onSelect}
             onUpdate={onUpdate}
@@ -2109,6 +2179,72 @@ export function ElementRenderer({
           },
         })
       }
+
+      // 处理标签页删除事件（当用户点击标签页的关闭按钮时）
+      const handleTabEdit = (targetKey: string | React.MouseEvent | React.KeyboardEvent, action: 'add' | 'remove') => {
+        if (action === 'remove') {
+          // 从参数中提取 key
+          // Ant Design Tabs 的 onEdit 在 remove 操作时，第一个参数是 targetKey (string)
+          let keyToDelete: string = ''
+          if (typeof targetKey === 'string') {
+            keyToDelete = targetKey
+          } else {
+            // 如果是事件对象，尝试从事件中获取 key
+            const event = targetKey as any
+            keyToDelete = event?.target?.dataset?.key || event?.key || ''
+          }
+          
+          if (!keyToDelete) {
+            return
+          }
+
+          const currentItems = element.props?.items || []
+          // 确保至少保留一个标签页
+          if (currentItems.length <= 1) {
+            return
+          }
+
+          // 找到要删除的标签页索引
+          const targetIndex = currentItems.findIndex((item: any) => String(item.key) === String(keyToDelete))
+          if (targetIndex === -1) {
+            return
+          }
+
+          // 删除标签页
+          const newItems = currentItems.filter((item: any) => String(item.key) !== String(keyToDelete))
+          
+          // 确定新的 activeKey
+          let newActiveKey: string | undefined = undefined
+          const currentActiveKey = element.props?.activeKey || element.props?.defaultActiveKey
+          
+          // 如果删除的是当前激活的标签页，需要切换到其他标签页
+          if (String(currentActiveKey) === String(keyToDelete)) {
+            // 优先切换到删除位置的前一个标签页，如果没有则切换到后一个，都没有则切换到第一个
+            if (targetIndex > 0) {
+              newActiveKey = newItems[targetIndex - 1].key
+            } else if (newItems.length > 0) {
+              newActiveKey = newItems[0].key
+            } else {
+              newActiveKey = ''
+            }
+          } else {
+            // 如果删除的不是当前激活的标签页，保持当前的 activeKey
+            newActiveKey = currentActiveKey
+          }
+
+          // 更新 items 和 activeKey
+          onUpdate(element.id, {
+            props: {
+              ...element.props,
+              items: newItems,
+              activeKey: newActiveKey,
+            },
+          })
+        } else if (action === 'add') {
+          // 添加标签页的逻辑（如果需要的话，可以在这里实现）
+          // 目前通过属性面板添加，所以这里可以留空或调用属性面板的添加逻辑
+        }
+      }
       
       // 确保使用受控的 activeKey（如果设置了 activeKey，使用它；否则使用 defaultActiveKey）
       // 如果都没有，使用第一个 tab 的 key
@@ -2133,6 +2269,7 @@ export function ElementRenderer({
             {...controlledTabsProps} 
             activeKey={currentActiveKey}
             onChange={handleTabChange}
+            onEdit={handleTabEdit}
             key={tabsKey}
           >
             {/* 如果没有 items，使用 children 方式 */}
