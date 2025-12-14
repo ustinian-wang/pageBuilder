@@ -367,6 +367,683 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
     })
   }
 
+  // Ant Design 组件的通用属性面板
+  const renderAntdComponentPanel = () => {
+    const commonStylePanel = (
+      <TabsContent value="style" className="mt-0 p-4 space-y-4">
+        <div>
+          <h3 className="text-xs font-semibold text-gray-700 mb-2">样式</h3>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">类名</label>
+              <input
+                type="text"
+                value={element.className || ''}
+                onChange={(e) => onUpdate({ className: e.target.value })}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: p-4 bg-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">宽度</label>
+              <input
+                type="text"
+                value={element.style?.width || ''}
+                onChange={(e) => updateStyle('width', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 100px 或 100%"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">高度</label>
+              <input
+                type="text"
+                value={element.style?.height || ''}
+                onChange={(e) => updateStyle('height', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 100px 或 auto"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">内边距</label>
+              <input
+                type="text"
+                value={element.style?.padding || ''}
+                onChange={(e) => updateStyle('padding', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 16px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">外边距</label>
+              <input
+                type="text"
+                value={element.style?.margin || ''}
+                onChange={(e) => updateStyle('margin', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 16px"
+              />
+            </div>
+          </div>
+        </div>
+      </TabsContent>
+    )
+
+    // 基础设置面板 - 根据组件类型渲染不同内容
+    const renderBasicPanel = () => {
+      const basicContent = []
+
+      // 组件类型切换器（所有 Ant Design 组件都有）
+      basicContent.push(
+        <div key="type-selector">
+          <label className="block text-xs font-medium text-gray-700 mb-1">组件类型</label>
+          <select
+            value={element.type}
+            onChange={(e) => handleTypeChange(e.target.value as ElementType)}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white"
+          >
+            {antdComponentTypes.map((comp) => (
+              <option key={comp.type} value={comp.type}>
+                {comp.icon} {comp.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            切换类型将重置组件属性，但保留样式设置
+          </p>
+        </div>
+      )
+
+      // 根据组件类型添加特定属性
+      switch (element.type) {
+        case 'a-button':
+          // Button 组件已有完整实现，这里不需要重复
+          break
+
+        case 'a-input':
+          basicContent.push(
+            <div key="placeholder">
+              <label className="block text-xs font-medium text-gray-700 mb-1">占位符</label>
+              <input
+                type="text"
+                value={element.props?.placeholder || ''}
+                onChange={(e) => updateProps('placeholder', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请输入占位符文本"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="defaultValue">
+              <label className="block text-xs font-medium text-gray-700 mb-1">默认值</label>
+              <input
+                type="text"
+                value={element.props?.defaultValue || ''}
+                onChange={(e) => updateProps('defaultValue', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请输入默认值"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-card':
+          basicContent.push(
+            <div key="title">
+              <label className="block text-xs font-medium text-gray-700 mb-1">标题</label>
+              <input
+                type="text"
+                value={element.props?.title || ''}
+                onChange={(e) => updateProps('title', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请输入卡片标题"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="hoverable">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.hoverable === true}
+                  onChange={(e) => updateProps('hoverable', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">可悬浮</span>
+              </label>
+            </div>
+          )
+          basicContent.push(
+            <div key="bordered">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.bordered !== false}
+                  onChange={(e) => updateProps('bordered', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">显示边框</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-select':
+          basicContent.push(
+            <div key="placeholder">
+              <label className="block text-xs font-medium text-gray-700 mb-1">占位符</label>
+              <input
+                type="text"
+                value={element.props?.placeholder || ''}
+                onChange={(e) => updateProps('placeholder', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请选择"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          basicContent.push(
+            <div key="allowClear">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.allowClear === true}
+                  onChange={(e) => updateProps('allowClear', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">支持清除</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-datepicker':
+          basicContent.push(
+            <div key="placeholder">
+              <label className="block text-xs font-medium text-gray-700 mb-1">占位符</label>
+              <input
+                type="text"
+                value={element.props?.placeholder || ''}
+                onChange={(e) => updateProps('placeholder', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请选择日期"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-radio':
+          basicContent.push(
+            <div key="label">
+              <label className="block text-xs font-medium text-gray-700 mb-1">标签</label>
+              <input
+                type="text"
+                value={element.props?.label || element.props?.children || ''}
+                onChange={(e) => updateProps('label', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请输入标签"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-checkbox':
+          basicContent.push(
+            <div key="label">
+              <label className="block text-xs font-medium text-gray-700 mb-1">标签</label>
+              <input
+                type="text"
+                value={element.props?.label || element.props?.children || ''}
+                onChange={(e) => updateProps('label', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请输入标签"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          basicContent.push(
+            <div key="checked">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.checked === true}
+                  onChange={(e) => updateProps('checked', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">默认选中</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-switch':
+          basicContent.push(
+            <div key="checked">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.checked === true}
+                  onChange={(e) => updateProps('checked', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">默认开启</span>
+              </label>
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-slider':
+          basicContent.push(
+            <div key="min">
+              <label className="block text-xs font-medium text-gray-700 mb-1">最小值</label>
+              <input
+                type="number"
+                value={element.props?.min || 0}
+                onChange={(e) => updateProps('min', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="max">
+              <label className="block text-xs font-medium text-gray-700 mb-1">最大值</label>
+              <input
+                type="number"
+                value={element.props?.max || 100}
+                onChange={(e) => updateProps('max', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="defaultValue">
+              <label className="block text-xs font-medium text-gray-700 mb-1">默认值</label>
+              <input
+                type="number"
+                value={element.props?.defaultValue || 0}
+                onChange={(e) => updateProps('defaultValue', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-rate':
+          basicContent.push(
+            <div key="defaultValue">
+              <label className="block text-xs font-medium text-gray-700 mb-1">默认值</label>
+              <input
+                type="number"
+                min={0}
+                max={5}
+                value={element.props?.defaultValue || 0}
+                onChange={(e) => updateProps('defaultValue', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="count">
+              <label className="block text-xs font-medium text-gray-700 mb-1">总数</label>
+              <input
+                type="number"
+                min={1}
+                value={element.props?.count || 5}
+                onChange={(e) => updateProps('count', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="disabled">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.disabled === true}
+                  onChange={(e) => updateProps('disabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">禁用</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-tag':
+          basicContent.push(
+            <div key="text">
+              <label className="block text-xs font-medium text-gray-700 mb-1">标签文本</label>
+              <input
+                type="text"
+                value={element.props?.text || element.props?.children || ''}
+                onChange={(e) => updateProps('text', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请输入标签文本"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="color">
+              <label className="block text-xs font-medium text-gray-700 mb-1">颜色</label>
+              <select
+                value={element.props?.color || 'default'}
+                onChange={(e) => updateProps('color', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              >
+                <option value="default">默认</option>
+                <option value="success">成功</option>
+                <option value="processing">处理中</option>
+                <option value="error">错误</option>
+                <option value="warning">警告</option>
+              </select>
+            </div>
+          )
+          basicContent.push(
+            <div key="closable">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.closable === true}
+                  onChange={(e) => updateProps('closable', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">可关闭</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-badge':
+          basicContent.push(
+            <div key="count">
+              <label className="block text-xs font-medium text-gray-700 mb-1">徽标数</label>
+              <input
+                type="number"
+                min={0}
+                value={element.props?.count || 0}
+                onChange={(e) => updateProps('count', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="showZero">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.showZero === true}
+                  onChange={(e) => updateProps('showZero', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">显示零值</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-avatar':
+          basicContent.push(
+            <div key="size">
+              <label className="block text-xs font-medium text-gray-700 mb-1">大小</label>
+              <select
+                value={element.props?.size || 'default'}
+                onChange={(e) => updateProps('size', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              >
+                <option value="small">小</option>
+                <option value="default">默认</option>
+                <option value="large">大</option>
+              </select>
+            </div>
+          )
+          basicContent.push(
+            <div key="shape">
+              <label className="block text-xs font-medium text-gray-700 mb-1">形状</label>
+              <select
+                value={element.props?.shape || 'circle'}
+                onChange={(e) => updateProps('shape', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              >
+                <option value="circle">圆形</option>
+                <option value="square">方形</option>
+              </select>
+            </div>
+          )
+          basicContent.push(
+            <div key="src">
+              <label className="block text-xs font-medium text-gray-700 mb-1">图片地址</label>
+              <input
+                type="text"
+                value={element.props?.src || ''}
+                onChange={(e) => updateProps('src', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="头像图片URL"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="text">
+              <label className="block text-xs font-medium text-gray-700 mb-1">文本</label>
+              <input
+                type="text"
+                value={element.props?.text || element.props?.children || ''}
+                onChange={(e) => updateProps('text', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="头像文本"
+              />
+            </div>
+          )
+          break
+
+        case 'a-alert':
+          basicContent.push(
+            <div key="message">
+              <label className="block text-xs font-medium text-gray-700 mb-1">提示信息</label>
+              <input
+                type="text"
+                value={element.props?.message || ''}
+                onChange={(e) => updateProps('message', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="请输入提示信息"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="description">
+              <label className="block text-xs font-medium text-gray-700 mb-1">描述</label>
+              <textarea
+                value={element.props?.description || ''}
+                onChange={(e) => updateProps('description', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                rows={3}
+                placeholder="请输入描述"
+              />
+            </div>
+          )
+          basicContent.push(
+            <div key="type">
+              <label className="block text-xs font-medium text-gray-700 mb-1">类型</label>
+              <select
+                value={element.props?.type || 'info'}
+                onChange={(e) => updateProps('type', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              >
+                <option value="success">成功</option>
+                <option value="info">信息</option>
+                <option value="warning">警告</option>
+                <option value="error">错误</option>
+              </select>
+            </div>
+          )
+          basicContent.push(
+            <div key="closable">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={element.props?.closable === true}
+                  onChange={(e) => updateProps('closable', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">可关闭</span>
+              </label>
+            </div>
+          )
+          break
+
+        case 'a-row':
+          basicContent.push(
+            <div key="gutter">
+              <label className="block text-xs font-medium text-gray-700 mb-1">间距</label>
+              <input
+                type="number"
+                min={0}
+                value={element.props?.gutter || 0}
+                onChange={(e) => updateProps('gutter', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="栅格间距"
+              />
+            </div>
+          )
+          break
+
+        case 'a-col':
+          basicContent.push(
+            <div key="span">
+              <label className="block text-xs font-medium text-gray-700 mb-1">栅格占位格数</label>
+              <input
+                type="number"
+                min={1}
+                max={24}
+                value={element.props?.span || 12}
+                onChange={(e) => updateProps('span', Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+          )
+          break
+
+        default:
+          // 其他组件类型可以在这里添加
+          break
+      }
+
+      return <TabsContent value="basic" className="mt-0 p-4 space-y-4">{basicContent}</TabsContent>
+    }
+
+    return (
+      <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full" data-property-panel>
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-gray-700">属性面板</h2>
+        </div>
+        <Tabs defaultValue="basic" className="flex flex-col flex-1 min-h-0">
+          <div className="px-4 pt-4 border-b border-gray-200 flex-shrink-0">
+            <TabsList className="w-full">
+              <TabsTrigger value="basic" className="flex-1">
+                基础设置
+              </TabsTrigger>
+              <TabsTrigger value="style" className="flex-1">
+                样式设置
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {renderBasicPanel()}
+            {commonStylePanel}
+          </div>
+        </Tabs>
+      </div>
+    )
+  }
+
   // Ant Design Button 组件的特殊处理
   if (element.type === 'a-button') {
     return (
@@ -641,6 +1318,11 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
         </Tabs>
       </div>
     )
+  }
+
+  // 其他 Ant Design 组件使用通用面板
+  if (isAntdComponent(element.type)) {
+    return renderAntdComponentPanel()
   }
 
   // 如果是 Ant Design 组件，添加类型切换器
