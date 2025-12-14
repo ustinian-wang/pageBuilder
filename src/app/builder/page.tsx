@@ -54,13 +54,14 @@ export default function BuilderPage() {
   }, [history])
 
   // 递归查找元素的辅助函数
-  const findElementById = (elements: Element[], id: string): Element | null => {
+  const findElementById = useCallback((elements: Element[], id: string): Element | null => {
     console.log('[页面状态] findElementById 开始查找, id:', id, 'elements count:', elements.length)
     for (const el of elements) {
       if (el.id === id) {
         console.log('[页面状态] findElementById 找到元素:', { id: el.id, type: el.type })
         return el
       }
+      // 查找 element.children
       if (el.children) {
         const found = findElementById(el.children, id)
         if (found) {
@@ -68,20 +69,33 @@ export default function BuilderPage() {
           return found
         }
       }
+      // 查找 props.items 中的 children（用于 a-tabs 等组件）
+      if (el.type === 'a-tabs' && el.props?.items && Array.isArray(el.props.items)) {
+        console.log('[页面状态] findElementById 检查 a-tabs 的 props.items, items count:', el.props.items.length)
+        for (const item of el.props.items) {
+          if (item.children && Array.isArray(item.children)) {
+            const found = findElementById(item.children, id)
+            if (found) {
+              console.log('[页面状态] findElementById 在 a-tabs props.items 的 children 中找到:', { id: found.id, type: found.type })
+              return found
+            }
+          }
+        }
+      }
     }
     console.warn('[页面状态] findElementById 未找到元素, id:', id)
     return null
-  }
+  }, [])
 
   // 递归查找选中的元素（支持嵌套元素）
   const selectedElement = useMemo(() => {
-    console.log('[页面状态] 计算 selectedElement, selectedElementId:', selectedElementId, 'elements count:', elements.length)
+    console.log('[页面状态] 计算 selectedElement, selectedElementId:', selectedElementId, 'elements count:', elements.length, elements)
     const result = selectedElementId 
       ? findElementById(elements, selectedElementId)
       : null
     console.log('[页面状态] selectedElement 计算结果:', result ? { id: result.id, type: result.type } : null)
     return result
-  }, [selectedElementId, elements])
+  }, [selectedElementId, elements, findElementById])
 
   // 日志：追踪 selectedElementId 和 selectedElement 的变化
   useEffect(() => {
@@ -1027,7 +1041,7 @@ export default function BuilderPage() {
 
           {/* 右侧属性面板 */}
           <PropertyPanel
-            element={selectedElement}
+            element={selectedElement || undefined}
             onUpdate={(updates) => {
               console.log('[属性面板] onUpdate 回调触发, selectedElementId:', selectedElementId, 'selectedElement:', selectedElement ? { id: selectedElement.id } : null, 'updates:', updates)
               if (selectedElementId) {
