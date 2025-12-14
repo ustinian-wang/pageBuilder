@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -18,7 +18,16 @@ const STORAGE_KEY = 'pageBuilder_currentPage'
 export default function BuilderPage() {
   const searchParams = useSearchParams()
   const [elements, setElements] = useState<Element[]>([])
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+  const [selectedElementId, setSelectedElementIdState] = useState<string | null>(null)
+  const prevSelectedElementIdRef = useRef<string | null>(null)
+  
+  // 包装 setSelectedElementId 以添加日志
+  const setSelectedElementId = useCallback((id: string | null) => {
+    const oldValue = prevSelectedElementIdRef.current
+    console.log('[页面状态] setSelectedElementId 被调用, 新值:', id, '旧值:', oldValue)
+    prevSelectedElementIdRef.current = id
+    setSelectedElementIdState(id)
+  }, [])
   const [isDragging, setIsDragging] = useState(false)
   const [activeDragComponent, setActiveDragComponent] = useState<{ type: ElementType; label: string; icon: string } | null>(null)
   const [pageName, setPageName] = useState('未命名页面')
@@ -46,20 +55,39 @@ export default function BuilderPage() {
 
   // 递归查找元素的辅助函数
   const findElementById = (elements: Element[], id: string): Element | null => {
+    console.log('[页面状态] findElementById 开始查找, id:', id, 'elements count:', elements.length)
     for (const el of elements) {
-      if (el.id === id) return el
+      if (el.id === id) {
+        console.log('[页面状态] findElementById 找到元素:', { id: el.id, type: el.type })
+        return el
+      }
       if (el.children) {
         const found = findElementById(el.children, id)
-        if (found) return found
+        if (found) {
+          console.log('[页面状态] findElementById 在子元素中找到:', { id: found.id, type: found.type })
+          return found
+        }
       }
     }
+    console.warn('[页面状态] findElementById 未找到元素, id:', id)
     return null
   }
 
   // 递归查找选中的元素（支持嵌套元素）
-  const selectedElement = selectedElementId 
-    ? findElementById(elements, selectedElementId)
-    : null
+  const selectedElement = useMemo(() => {
+    console.log('[页面状态] 计算 selectedElement, selectedElementId:', selectedElementId, 'elements count:', elements.length)
+    const result = selectedElementId 
+      ? findElementById(elements, selectedElementId)
+      : null
+    console.log('[页面状态] selectedElement 计算结果:', result ? { id: result.id, type: result.type } : null)
+    return result
+  }, [selectedElementId, elements])
+
+  // 日志：追踪 selectedElementId 和 selectedElement 的变化
+  useEffect(() => {
+    console.log('[页面状态] selectedElementId 变化:', selectedElementId)
+    console.log('[页面状态] selectedElement:', selectedElement ? { id: selectedElement.id, type: selectedElement.type } : null)
+  }, [selectedElementId, selectedElement])
 
   // 加载页面列表
   const loadPages = async () => {
@@ -1001,8 +1029,11 @@ export default function BuilderPage() {
           <PropertyPanel
             element={selectedElement}
             onUpdate={(updates) => {
+              console.log('[属性面板] onUpdate 回调触发, selectedElementId:', selectedElementId, 'selectedElement:', selectedElement ? { id: selectedElement.id } : null, 'updates:', updates)
               if (selectedElementId) {
                 updateElement(selectedElementId, updates)
+              } else {
+                console.warn('[属性面板] onUpdate 被调用但 selectedElementId 为 null')
               }
             }}
           />

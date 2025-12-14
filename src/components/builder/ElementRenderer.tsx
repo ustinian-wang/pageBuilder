@@ -1001,28 +1001,42 @@ export function ElementRenderer({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    console.log('[右键菜单] handleContextMenu 触发, element.id:', element.id, 'element:', element)
     setContextMenu({ x: e.clientX, y: e.clientY })
     // 选中当前元素
+    console.log('[右键菜单] 调用 onSelect, 传递 element.id:', element.id)
     onSelect(element.id)
+    console.log('[右键菜单] onSelect 调用完成, element.id:', element.id)
   }
 
   const handleStyleMenuClick = () => {
-    console.log('handleStyleMenuClick', element.id, element);
+    console.log('[设置样式] handleStyleMenuClick 触发, element.id:', element.id, 'element:', element)
+    console.log('[设置样式] 当前 selectedElementId (从 props):', selectedElementId)
+    console.log('[设置样式] 当前 element.id 是否等于 selectedElementId:', element.id === selectedElementId)
+    
     // 触发自定义事件，通知属性面板切换到样式标签页
+    const eventDetail = {
+      elementId: element.id,
+      tab: 'style'
+    }
+    console.log('[设置样式] 准备发送 switchPropertyPanelTab 事件, detail:', eventDetail)
+    console.log('[设置样式] 当前时间戳:', Date.now())
     const switchTabEvent = new CustomEvent('switchPropertyPanelTab', {
-      detail: {
-        elementId: element.id,
-        tab: 'style'
-      }
+      detail: eventDetail
     })
     window.dispatchEvent(switchTabEvent)
+    console.log('[设置样式] switchPropertyPanelTab 事件已发送, elementId:', element.id)
     
     // 滚动到属性面板
     const propertyPanel = document.querySelector('[data-property-panel]')
     if (propertyPanel) {
+      console.log('[设置样式] 找到属性面板，准备滚动')
       propertyPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    } else {
+      console.warn('[设置样式] 未找到属性面板元素 [data-property-panel]')
     }
     setContextMenu(null)
+    console.log('[设置样式] handleStyleMenuClick 完成, element.id:', element.id)
   }
 
   const handleDeleteMenuClick = () => {

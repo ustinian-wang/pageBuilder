@@ -346,29 +346,73 @@ export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab,
   // 使用外部传入的 activeTab，如果没有则使用内部状态
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab
   
+  // 日志：追踪 element prop 的变化
+  useEffect(() => {
+    console.log('[属性面板] element prop 变化:', element ? { id: element.id, type: element.type } : null)
+  }, [element])
+  
   // 处理标签页切换
   const handleTabChange = useCallback((value: string) => {
+    console.log('[属性面板] handleTabChange 调用, 切换到标签页:', value, '当前 element:', element ? { id: element.id } : null)
     if (externalActiveTab === undefined) {
       // 如果没有外部控制，使用内部状态
+      console.log('[属性面板] 使用内部状态更新标签页:', value)
       setInternalActiveTab(value)
+    } else {
+      console.log('[属性面板] 使用外部控制的标签页')
     }
     // 通知外部标签页变化
     if (onTabChange) {
+      console.log('[属性面板] 通知外部标签页变化:', value)
       onTabChange(value)
     }
-  }, [externalActiveTab, onTabChange])
+  }, [externalActiveTab, onTabChange, element])
   
   // 监听自定义事件，用于从外部切换标签页
   useEffect(() => {
+    console.log('[属性面板] useEffect 执行, 注册/更新事件监听器, 当前 element:', element ? { id: element.id, type: element.type } : null)
+    console.log('[属性面板] useEffect 执行时间戳:', Date.now())
+    
     const handleSwitchTab = (e: CustomEvent) => {
       const { tab, elementId } = e.detail
+      console.log('[属性面板] 收到 switchPropertyPanelTab 事件, 时间戳:', Date.now())
+      console.log('[属性面板] 事件详情:', { 
+        eventElementId: elementId, 
+        currentElementId: element?.id,
+        currentElementType: element?.type,
+        tab,
+        elementExists: !!element,
+        idsMatch: element?.id === elementId,
+        elementObject: element
+      })
+      console.log('[属性面板] 事件监听器闭包中的 element 值:', element ? { id: element.id } : 'undefined')
+      
       // 只有当事件是针对当前元素时才切换
-      if (!element || element.id !== elementId) return
+      if (!element) {
+        console.warn('[属性面板] 收到切换标签页事件，但当前没有选中的元素')
+        console.warn('[属性面板] 这可能是因为状态更新尚未完成，element prop 还未更新')
+        return
+      }
+      
+      if (element.id !== elementId) {
+        console.warn('[属性面板] 收到切换标签页事件，但 elementId 不匹配:', {
+          eventElementId: elementId,
+          currentElementId: element.id,
+          currentElementType: element.type
+        })
+        console.warn('[属性面板] 这可能是因为事件发送时，element prop 还未更新到正确的元素')
+        return
+      }
+      
+      console.log('[属性面板] elementId 匹配，切换到标签页:', tab)
       handleTabChange(tab)
+      console.log('[属性面板] 标签页切换完成:', tab)
     }
     
+    console.log('[属性面板] 注册 switchPropertyPanelTab 事件监听器, 当前 element:', element ? { id: element.id } : null)
     window.addEventListener('switchPropertyPanelTab', handleSwitchTab as EventListener)
     return () => {
+      console.log('[属性面板] 移除 switchPropertyPanelTab 事件监听器')
       window.removeEventListener('switchPropertyPanelTab', handleSwitchTab as EventListener)
     }
   }, [element, handleTabChange])
