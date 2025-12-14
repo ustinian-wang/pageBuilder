@@ -1,19 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DndContext, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { ComponentPanel } from '@/components/builder/ComponentPanel'
 import { Canvas } from '@/components/builder/Canvas'
 import { PropertyPanel } from '@/components/builder/PropertyPanel'
 import { CodeViewer } from '@/components/builder/CodeViewer'
-import { Element } from '@/lib/types'
+import { Element, ElementType } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 
 export default function BuilderPage() {
   const [elements, setElements] = useState<Element[]>([])
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [activeDragComponent, setActiveDragComponent] = useState<{ type: ElementType; label: string; icon: string } | null>(null)
   const [pageName, setPageName] = useState('未命名页面')
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -24,10 +25,17 @@ export default function BuilderPage() {
 
   const handleDragStart = (event: DragStartEvent) => {
     setIsDragging(true)
+    // 如果是从组件面板拖拽的组件，记录组件信息用于显示预览
+    if (event.active.data.current?.type === 'component') {
+      const componentType = event.active.data.current.componentType as ElementType
+      const componentInfo = getComponentInfo(componentType)
+      setActiveDragComponent(componentInfo)
+    }
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
     setIsDragging(false)
+    setActiveDragComponent(null)
     const { active, over } = event
 
     if (!over) return
@@ -249,6 +257,18 @@ export default function BuilderPage() {
               }
             }}
           />
+
+          {/* 拖拽预览层 - 使用 DragOverlay 避免被 overflow 隐藏 */}
+          <DragOverlay style={{ opacity: 0.9 }}>
+            {activeDragComponent ? (
+              <div className="p-3 bg-white border-2 border-blue-500 rounded-lg shadow-xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{activeDragComponent.icon}</span>
+                  <span className="text-sm font-medium text-gray-900">{activeDragComponent.label}</span>
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
@@ -279,5 +299,22 @@ function getDefaultProps(type: Element['type']): Record<string, any> {
     form: {},
   }
   return defaults[type] || {}
+}
+
+function getComponentInfo(type: ElementType): { type: ElementType; label: string; icon: string } {
+  const componentMap: Record<ElementType, { label: string; icon: string }> = {
+    container: { label: '容器', icon: '📦' },
+    text: { label: '文本', icon: '📝' },
+    button: { label: '按钮', icon: '🔘' },
+    input: { label: '输入框', icon: '📥' },
+    image: { label: '图片', icon: '🖼️' },
+    card: { label: '卡片', icon: '🎴' },
+    divider: { label: '分割线', icon: '➖' },
+    heading: { label: '标题', icon: '📌' },
+    paragraph: { label: '段落', icon: '📄' },
+    list: { label: '列表', icon: '📋' },
+    form: { label: '表单', icon: '📋' },
+  }
+  return { type, ...componentMap[type] }
 }
 

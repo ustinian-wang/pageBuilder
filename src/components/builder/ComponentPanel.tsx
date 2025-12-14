@@ -28,7 +28,7 @@ const customComponents: ComponentDefinition[] = [
 ]
 
 function DraggableComponent({ component }: { component: ComponentDefinition }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `component-${component.type}`,
     data: {
       type: 'component',
@@ -36,22 +36,15 @@ function DraggableComponent({ component }: { component: ComponentDefinition }) {
     },
   })
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
       {...listeners}
       {...attributes}
       className={`
         p-3 bg-white border border-gray-200 rounded cursor-move
         hover:border-blue-400 hover:shadow-md transition-all
-        ${isDragging ? 'opacity-50' : ''}
+        ${isDragging ? 'opacity-30' : ''}
       `}
       title={component.description}
     >
