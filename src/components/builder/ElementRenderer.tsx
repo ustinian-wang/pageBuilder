@@ -1918,11 +1918,39 @@ export function ElementRenderer({
       break
 
     case 'a-radio':
+      // 判断是单个 Radio 还是 Radio Group
+      const hasOptions = element.props?.options && Array.isArray(element.props.options) && element.props.options.length > 0
+      
+      if (hasOptions) {
+        // Radio Group 模式
+        const radioGroupProps = { ...(element.props || {}) }
+        // 移除 options，因为 Radio.Group 使用 children 方式渲染选项
+        const options = radioGroupProps.options || []
+        delete radioGroupProps.options
+        
+        content = (
+          <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+            <Radio.Group {...radioGroupProps} defaultValue={element.props?.defaultValue}>
+              {options.map((option: any, index: number) => (
+                <Radio 
+                  key={index} 
+                  value={option.value} 
+                  disabled={option.disabled}
+                >
+                  {option.label}
+                </Radio>
+              ))}
+            </Radio.Group>
+          </div>
+        )
+      } else {
+        // 单个 Radio 模式
       content = (
         <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
           <Radio {...(element.props || {})}>{element.props?.children || element.props?.label || 'Radio'}</Radio>
         </div>
       )
+      }
       break
 
     case 'a-checkbox':
