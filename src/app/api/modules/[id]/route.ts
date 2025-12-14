@@ -5,12 +5,12 @@ import { UpdateCustomModuleRequest } from '@/lib/types'
 // PUT /api/modules/[id] - 更新自定义模块
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await initDB()
     const db = await getDB()
-    const moduleId = params.id
+    const { id: moduleId } = await params
     const body: UpdateCustomModuleRequest = await request.json()
 
     const moduleIndex = db.data.customModules.findIndex(m => m.id === moduleId)
@@ -57,12 +57,12 @@ export async function PUT(
 // DELETE /api/modules/[id] - 删除自定义模块
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await initDB()
     const db = await getDB()
-    const moduleId = params.id
+    const { id: moduleId } = await params
 
     const index = db.data.customModules.findIndex(m => m.id === moduleId)
     if (index === -1) {

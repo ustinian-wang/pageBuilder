@@ -67,6 +67,11 @@ export class VueGenerator {
   ): string {
     const { type, props, style, className, children } = element
     
+    // 特殊处理 a-tabs 组件：使用 a-tab-pane 方式生成
+    if (type === 'a-tabs' && props?.items && Array.isArray(props.items)) {
+      return this.generateTabsCode(element, parentAutoFill)
+    }
+    
     // 处理容器自动填充样式
     let finalStyle = { ...style }
     if (type === 'container' && props?.autoFill) {
@@ -156,6 +161,94 @@ export class VueGenerator {
       return `${openTag}${content}\n${closeTag}`
     }
 
+    return `${openTag}${closeTag}`
+  }
+
+  /**
+   * 生成 a-tabs 组件的代码
+   * 使用 a-tab-pane 子组件方式，每个 tab 的内容都会生成
+   */
+  private generateTabsCode(
+    element: Element,
+    parentAutoFill: boolean = false
+  ): string {
+    const { props, style, className } = element
+    
+    // 处理样式
+    let finalStyle = { ...style }
+    if (parentAutoFill) {
+      finalStyle = {
+        ...finalStyle,
+        flex: '1',
+      }
+    }
+    const styleStr = this.formatStyle(finalStyle)
+    
+    // 生成组件类名
+    const componentClass = this.getComponentClassName('a-tabs')
+    const mergedClassName = this.mergeClassNames(componentClass, className)
+    const classNameStr = ` class="${mergedClassName}"`
+    
+    // 准备 tabs 的 props（排除 items，因为我们要用 a-tab-pane 方式）
+    const tabsProps = { ...props }
+    delete tabsProps.items
+    const propsStr = this.formatProps(tabsProps, true)
+    
+    const tag = 'fa-tabs'
+    const openTag = `${this.indentStr()}<${tag}${propsStr}${classNameStr}${styleStr}>`
+    const closeTag = `${this.indentStr()}</${tag}>`
+    
+    let content = ''
+    
+    // 为每个 item 生成 a-tab-pane
+    if (props.items && Array.isArray(props.items)) {
+      this.indent++
+      for (const item of props.items) {
+        const tabKey = item.key || `tab-${Math.random().toString(36).slice(2, 11)}`
+        const tabLabel = item.label || 'Tab'
+        
+        // 生成 a-tab-pane 的 props（key 需要单独处理，因为它是 Vue 的特殊属性）
+        const tabPaneProps: Record<string, any> = {
+          tab: tabLabel,
+        }
+        
+        // 添加其他 tab 相关的 props（如果有）
+        if (item.disabled !== undefined) {
+          tabPaneProps.disabled = item.disabled
+        }
+        if (item.closable !== undefined) {
+          tabPaneProps.closable = item.closable
+        }
+        
+        const tabPanePropsStr = this.formatProps(tabPaneProps, true)
+        // key 属性需要单独添加，因为它是 Vue 的特殊属性
+        const tabPaneOpenTag = `${this.indentStr()}<fa-tab-pane key="${tabKey}"${tabPanePropsStr}>`
+        const tabPaneCloseTag = `${this.indentStr()}</fa-tab-pane>`
+        
+        // 生成 tab 内容（item.children）
+        let tabContent = ''
+        if (item.children && Array.isArray(item.children) && item.children.length > 0) {
+          this.indent++
+          const isAutoFill = false // tab 内容区域通常不需要 autoFill
+          for (const child of item.children) {
+            tabContent += '\n' + this.generateElementCode(child, isAutoFill)
+          }
+          this.indent--
+        }
+        
+        if (tabContent) {
+          content += `\n${tabPaneOpenTag}${tabContent}\n${tabPaneCloseTag}`
+        } else {
+          content += `\n${tabPaneOpenTag}${tabPaneCloseTag}`
+        }
+      }
+      this.indent--
+    }
+    
+    if (content) {
+      return `${openTag}${content}\n${closeTag}`
+    }
+    
     return `${openTag}${closeTag}`
   }
 

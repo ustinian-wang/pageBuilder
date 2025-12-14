@@ -5,13 +5,14 @@ import { UpdatePageRequest } from '@/lib/types'
 // GET /api/pages/[id] - 获取单个页面
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await initDB()
     const db = await getDB()
+    const { id } = await params
 
-    const page = db.data.pages.find(p => p.id === params.id)
+    const page = db.data.pages.find(p => p.id === id)
 
     if (!page) {
       return NextResponse.json(
@@ -36,14 +37,15 @@ export async function GET(
 // PATCH /api/pages/[id] - 更新页面
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await initDB()
     const db = await getDB()
+    const { id } = await params
     const body: UpdatePageRequest = await request.json()
 
-    const pageIndex = db.data.pages.findIndex(p => p.id === params.id)
+    const pageIndex = db.data.pages.findIndex(p => p.id === id)
 
     if (pageIndex === -1) {
       return NextResponse.json(
@@ -83,13 +85,14 @@ export async function PATCH(
 // DELETE /api/pages/[id] - 删除页面
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await initDB()
     const db = await getDB()
+    const { id } = await params
 
-    const pageIndex = db.data.pages.findIndex(p => p.id === params.id)
+    const pageIndex = db.data.pages.findIndex(p => p.id === id)
 
     if (pageIndex === -1) {
       return NextResponse.json(
