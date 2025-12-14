@@ -211,6 +211,102 @@ export function ContainerPanel({
           </div>
         </div>
       </div>
+
+      {/* 容器样式设置 */}
+      <div className="border-t border-gray-200 pt-4">
+        <h3 className="text-xs font-semibold text-gray-700 mb-3">容器样式设置</h3>
+        <div className="space-y-3">
+          {/* 背景颜色 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">背景颜色</label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={element.style?.backgroundColor || '#ffffff'}
+                onChange={(e) => updateStyle('backgroundColor', e.target.value)}
+                className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+              />
+              <input
+                type="text"
+                value={element.style?.backgroundColor || ''}
+                onChange={(e) => {
+                  const value = e.target.value.trim()
+                  // 如果输入为空，设置为 undefined，这样会使用默认的白色背景
+                  updateStyle('backgroundColor', value || undefined)
+                }}
+                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="#ffffff (默认白色)"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">设置容器的背景颜色，默认为白色。留空则使用默认值</p>
+          </div>
+
+          {/* 圆角 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">圆角 (border-radius)</label>
+            <input
+              type="text"
+              value={element.style?.borderRadius || ''}
+              onChange={(e) => updateStyle('borderRadius', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              placeholder="例如: 4px 或 8px 或 50%"
+            />
+            <p className="text-xs text-gray-500 mt-1">设置容器的圆角大小</p>
+          </div>
+
+          {/* 边框 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">边框</label>
+            <input
+              type="text"
+              value={element.style?.border || ''}
+              onChange={(e) => updateStyle('border', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              placeholder="例如: 1px solid #e8e8e8"
+            />
+            <p className="text-xs text-gray-500 mt-1">设置容器的边框样式</p>
+          </div>
+
+          {/* 阴影 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">阴影 (box-shadow)</label>
+            <input
+              type="text"
+              value={element.style?.boxShadow || ''}
+              onChange={(e) => updateStyle('boxShadow', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              placeholder="例如: 0 2px 8px rgba(0,0,0,0.15)"
+            />
+            <p className="text-xs text-gray-500 mt-1">设置容器的阴影效果</p>
+          </div>
+
+          {/* 内边距 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">内边距 (padding)</label>
+            <input
+              type="text"
+              value={element.style?.padding || ''}
+              onChange={(e) => updateStyle('padding', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              placeholder="例如: 16px 或 16px 8px"
+            />
+            <p className="text-xs text-gray-500 mt-1">设置容器的内边距</p>
+          </div>
+
+          {/* 外边距 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">外边距 (margin)</label>
+            <input
+              type="text"
+              value={element.style?.margin || ''}
+              onChange={(e) => updateStyle('margin', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              placeholder="例如: 16px 或 16px 8px"
+            />
+            <p className="text-xs text-gray-500 mt-1">设置容器的外边距</p>
+          </div>
+        </div>
+      </div>
     </TabsContent>
   )
 }

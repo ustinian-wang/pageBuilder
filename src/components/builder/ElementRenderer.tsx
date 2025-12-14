@@ -479,10 +479,8 @@ const TabContentRenderer = ({
                     })
                 }
 
-                // 从最新的 element 中获取 items（通过 onUpdate 回调获取最新数据）
-                // 由于 TabContentRenderer 没有直接访问 element，我们需要通过 onUpdate 来更新
-                // 这里使用一个特殊的更新方式：先获取当前 items，然后删除
-                const currentItems = (tabItem as any).__parentItems || []
+                // 优先使用 parentElement 中的最新 items，如果没有则使用 __parentItems
+                const currentItems = parentElement?.props?.items || (tabItem as any).__parentItems || []
                 const updatedItems = currentItems.map((item: any) => {
                   if (item.key === tabKey && Array.isArray(item.children)) {
                     // 检查是否是 Element 对象数组
@@ -1316,6 +1314,10 @@ export function ElementRenderer({
     }
     if (!baseStyle.minHeight) {
       baseStyle.minHeight = '16px'
+    }
+    // 为容器添加默认白色背景（如果未设置背景色）
+    if (!baseStyle.backgroundColor && !element.className?.includes('bg-')) {
+      baseStyle.backgroundColor = '#ffffff'
     }
   }
 
