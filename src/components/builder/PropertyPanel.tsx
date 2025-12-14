@@ -175,6 +175,18 @@ function getAntdDefaultProps(type: ElementType): Record<string, any> {
     'a-input': { placeholder: '请输入' },
     'a-card': { title: 'Card Title' },
     'a-form': {},
+    'a-table': {
+      columns: [
+        { title: '姓名', dataIndex: 'name', key: 'name' },
+        { title: '年龄', dataIndex: 'age', key: 'age' },
+        { title: '地址', dataIndex: 'address', key: 'address' },
+      ],
+      dataSource: [
+        { key: '1', name: '张三', age: 32, address: '北京市' },
+        { key: '2', name: '李四', age: 42, address: '上海市' },
+        { key: '3', name: '王五', age: 28, address: '广州市' },
+      ],
+    },
     'a-select': { placeholder: '请选择' },
     'a-datepicker': {},
     'a-radio': { label: 'Radio' },
@@ -1218,6 +1230,316 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                     <span className="text-xs font-medium text-gray-700">卡片式标签</span>
                   </label>
                 </div>
+              </div>
+            </div>
+          )
+          break
+
+        case 'a-table':
+          // Table 列配置
+          const tableColumns = element.props?.columns || []
+          basicContent.push(
+            <div key="table-columns">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-medium text-gray-700">列配置</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newColumns = [
+                      ...tableColumns,
+                      {
+                        title: `列${tableColumns.length + 1}`,
+                        dataIndex: `column${tableColumns.length + 1}`,
+                        key: `column${tableColumns.length + 1}`,
+                      },
+                    ]
+                    updateProps('columns', newColumns)
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1"
+                >
+                  {React.createElement(PlusOutlined, { className: 'text-xs' })}
+                  添加列
+                </button>
+              </div>
+              {tableColumns.length === 0 ? (
+                <p className="text-xs text-gray-500 py-2">暂无列，点击"添加列"按钮添加</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {tableColumns.map((column: any, index: number) => (
+                    <div key={column.key || index} className="p-2 border border-gray-200 rounded bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-gray-600">列 {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newColumns = tableColumns.filter((_: any, i: number) => i !== index)
+                            updateProps('columns', newColumns)
+                          }}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          title="删除"
+                        >
+                          {React.createElement(DeleteOutlined, { className: 'text-xs' })}
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">列标题</label>
+                          <input
+                            type="text"
+                            value={column.title || ''}
+                            onChange={(e) => {
+                              const newColumns = [...tableColumns]
+                              newColumns[index] = { ...column, title: e.target.value }
+                              updateProps('columns', newColumns)
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            placeholder="列标题"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">数据字段</label>
+                          <input
+                            type="text"
+                            value={column.dataIndex || ''}
+                            onChange={(e) => {
+                              const newColumns = [...tableColumns]
+                              newColumns[index] = { ...column, dataIndex: e.target.value }
+                              updateProps('columns', newColumns)
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            placeholder="dataIndex"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Key</label>
+                          <input
+                            type="text"
+                            value={column.key || ''}
+                            onChange={(e) => {
+                              const newColumns = [...tableColumns]
+                              newColumns[index] = { ...column, key: e.target.value }
+                              updateProps('columns', newColumns)
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            placeholder="唯一标识"
+                          />
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={column.width !== undefined}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = {
+                                  ...column,
+                                  width: e.target.checked ? 100 : undefined,
+                                }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-xs text-gray-600">固定宽度</span>
+                          </label>
+                        </div>
+                        {column.width !== undefined && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">宽度</label>
+                            <input
+                              type="number"
+                              value={column.width || 100}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = { ...column, width: Number(e.target.value) }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                              placeholder="列宽度"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={column.fixed === 'left' || column.fixed === 'right'}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = {
+                                  ...column,
+                                  fixed: e.target.checked ? 'left' : undefined,
+                                }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-xs text-gray-600">固定列（左侧）</span>
+                          </label>
+                        </div>
+                        {column.fixed === 'left' && (
+                          <div>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={column.fixed === 'right'}
+                                onChange={(e) => {
+                                  const newColumns = [...tableColumns]
+                                  newColumns[index] = {
+                                    ...column,
+                                    fixed: e.target.checked ? 'right' : 'left',
+                                  }
+                                  updateProps('columns', newColumns)
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-xs text-gray-600">改为右侧固定</span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+          
+          // Table 数据源配置
+          basicContent.push(
+            <div key="table-dataSource" className="pt-4 border-t border-gray-200">
+              <label className="block text-xs font-medium text-gray-700 mb-2">数据源（JSON格式）</label>
+              <textarea
+                value={JSON.stringify(element.props?.dataSource || [], null, 2)}
+                onChange={(e) => {
+                  try {
+                    const dataSource = JSON.parse(e.target.value)
+                    updateProps('dataSource', dataSource)
+                  } catch (error) {
+                    // 如果JSON格式错误，暂时不更新
+                  }
+                }}
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded font-mono"
+                rows={6}
+                placeholder='[{"key": "1", "name": "张三", "age": 32}]'
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                请输入有效的JSON数组格式数据
+              </p>
+            </div>
+          )
+          
+          // Table 其他属性
+          basicContent.push(
+            <div key="table-other" className="pt-4 border-t border-gray-200 space-y-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">表格大小</label>
+                <select
+                  value={element.props?.size || 'middle'}
+                  onChange={(e) => updateProps('size', e.target.value)}
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                >
+                  <option value="small">小 (small)</option>
+                  <option value="middle">中 (middle)</option>
+                  <option value="large">大 (large)</option>
+                </select>
+              </div>
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={element.props?.bordered === true}
+                    onChange={(e) => updateProps('bordered', e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-xs font-medium text-gray-700">显示边框</span>
+                </label>
+              </div>
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={element.props?.loading === true}
+                    onChange={(e) => updateProps('loading', e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-xs font-medium text-gray-700">加载状态</span>
+                </label>
+              </div>
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={element.props?.pagination !== false}
+                    onChange={(e) => updateProps('pagination', e.target.checked ? {} : false)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-xs font-medium text-gray-700">显示分页</span>
+                </label>
+              </div>
+              {element.props?.pagination !== false && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">每页条数</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={element.props?.pagination?.pageSize || 10}
+                      onChange={(e) => {
+                        const pageSize = Number(e.target.value)
+                        updateProps('pagination', {
+                          ...(element.props?.pagination || {}),
+                          pageSize,
+                        })
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={element.props?.pagination?.showSizeChanger === true}
+                        onChange={(e) => {
+                          updateProps('pagination', {
+                            ...(element.props?.pagination || {}),
+                            showSizeChanger: e.target.checked,
+                          })
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-xs font-medium text-gray-700">显示每页条数选择器</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={element.props?.pagination?.showQuickJumper === true}
+                        onChange={(e) => {
+                          updateProps('pagination', {
+                            ...(element.props?.pagination || {}),
+                            showQuickJumper: e.target.checked,
+                          })
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-xs font-medium text-gray-700">显示快速跳转</span>
+                    </label>
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">行键字段</label>
+                <input
+                  type="text"
+                  value={element.props?.rowKey || 'key'}
+                  onChange={(e) => updateProps('rowKey', e.target.value || 'key')}
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                  placeholder="rowKey"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  用于标识每一行的唯一字段名，默认为 "key"
+                </p>
               </div>
             </div>
           )

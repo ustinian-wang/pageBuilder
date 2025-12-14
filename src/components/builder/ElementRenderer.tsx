@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { Element } from '@/lib/types'
 import { ResizeHandle } from './ResizeHandle'
@@ -140,6 +140,276 @@ const getIconComponent = (iconName: string | undefined): React.ReactNode | undef
   const IconComponent = iconMap[iconName]
   return IconComponent ? React.createElement(IconComponent) : undefined
 }
+
+// TabContentRenderer 组件：用于渲染每个 tab 的内容区域，支持拖拽
+// 提取为独立组件，避免在每次渲染时重新创建
+// 注意：不使用 React.memo，因为需要响应 tabItem 的变化
+const TabContentRenderer = ({ 
+  elementId,
+  tabKey, 
+  tabItem,
+  selectedElementId,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onCopy,
+}: { 
+  elementId: string
+  tabKey: string
+  tabItem: any
+  selectedElementId: string | null
+  onSelect: (id: string | null) => void
+  onUpdate: (id: string, updates: Partial<Element>) => void
+  onDelete: (id: string) => void
+  onCopy?: (element: Element) => void
+}) => {
+  const tabDroppableId = `tab-content-${elementId}-${tabKey}`
+  const { setNodeRef: setTabDroppableRef, isOver: isTabOver } = useDroppable({
+    id: tabDroppableId,
+  })
+  
+  // 如果 children 是 Element 数组（用于页面构建器的元素树）
+  if (Array.isArray(tabItem.children) && tabItem.children.length > 0) {
+    // 检查是否是 Element 对象（有 id 和 type 属性）
+    const isElementArray = tabItem.children.every(
+      (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
+    )
+    
+    if (isElementArray) {
+      // 是 Element 数组，渲染为可拖拽区域
+      return (
+        <div
+          ref={setTabDroppableRef}
+          className="relative min-h-[60px] p-2"
+          style={{ minHeight: '60px', position: 'relative', zIndex: 1 }}
+          onClick={(e) => {
+            // 点击 tab 内容区域时，不选中 tabs 本身
+            e.stopPropagation()
+          }}
+          onMouseDown={(e) => {
+            // 阻止事件冒泡，确保拖拽区域可以正常工作
+            e.stopPropagation()
+          }}
+        >
+          {tabItem.children.map((child: Element) => (
+            <ElementRenderer
+              key={child.id}
+              element={child}
+              selectedElementId={selectedElementId}
+              onSelect={onSelect}
+              onUpdate={(childId, updates) => {
+                // 更新 tab 内容中的子元素
+                // 使用传入的 __parentItems 来更新
+                const currentItems = (tabItem as any).__parentItems || []
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    return {
+                      ...item,
+                      children: item.children.map((c: Element) =>
+                        c.id === childId ? { ...c, ...updates } : c
+                      ),
+                    }
+                  }
+                  return item
+                })
+                onUpdate(elementId, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+              }}
+              onDelete={(childId) => {
+                // 删除 tab 内容中的子元素
+                const currentItems = (tabItem as any).__parentItems || []
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    return {
+                      ...item,
+                      children: item.children.filter((c: Element) => c.id !== childId),
+                    }
+                  }
+                  return item
+                })
+                onUpdate(elementId, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+              }}
+              onCopy={onCopy ? (copiedElement) => {
+                // 复制 tab 内容中的子元素
+                const { generateId } = require('@/lib/utils')
+                const cloneElement = (el: Element): Element => {
+                  const newId = generateId()
+                  return {
+                    ...el,
+                    id: newId,
+                    children: el.children ? el.children.map(cloneElement) : undefined,
+                  }
+                }
+                const clonedElement = cloneElement(copiedElement)
+                
+                const currentItems = (tabItem as any).__parentItems || []
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    return {
+                      ...item,
+                      children: [...item.children, clonedElement],
+                    }
+                  }
+                  return item
+                })
+                onUpdate(elementId, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+              } : undefined}
+              parentAutoFill={false}
+            />
+          ))}
+          {isTabOver && (
+            <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 z-0 pointer-events-none" />
+          )}
+          {(!tabItem.children || tabItem.children.length === 0) && (
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none z-0">
+              拖拽组件到这里
+            </div>
+          )}
+        </div>
+      )
+    }
+  }
+  
+  // 如果 children 是字符串、数字或其他简单类型，或者为空
+  const textContent = typeof tabItem.children === 'string' || typeof tabItem.children === 'number'
+    ? String(tabItem.children)
+    : ''
+  
+  // 检查是否有 Element 数组（即使为空数组）
+  const hasElementArray = Array.isArray(tabItem.children) && 
+    (tabItem.children.length === 0 || tabItem.children.every(
+      (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
+    ))
+  
+  return (
+    <div
+      ref={setTabDroppableRef}
+      className="relative min-h-[60px] p-2"
+      style={{ 
+        minHeight: '60px', 
+        position: 'relative', 
+        zIndex: 1,
+        width: '100%',
+        // 确保拖拽区域可以接收事件
+        pointerEvents: 'auto',
+      }}
+      onClick={(e) => {
+        // 点击 tab 内容区域时，不选中 tabs 本身
+        e.stopPropagation()
+      }}
+      onMouseDown={(e) => {
+        // 阻止事件冒泡，确保拖拽区域可以正常工作
+        e.stopPropagation()
+      }}
+    >
+      {/* 如果有 Element 数组，渲染子元素 */}
+      {hasElementArray && tabItem.children.length > 0 && (
+        <>
+          {tabItem.children.map((child: Element) => (
+            <ElementRenderer
+              key={child.id}
+              element={child}
+              selectedElementId={selectedElementId}
+              onSelect={onSelect}
+              onUpdate={(childId, updates) => {
+                const currentItems = (tabItem as any).__parentItems || []
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    return {
+                      ...item,
+                      children: item.children.map((c: Element) =>
+                        c.id === childId ? { ...c, ...updates } : c
+                      ),
+                    }
+                  }
+                  return item
+                })
+                onUpdate(elementId, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+              }}
+              onDelete={(childId) => {
+                const currentItems = (tabItem as any).__parentItems || []
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    return {
+                      ...item,
+                      children: item.children.filter((c: Element) => c.id !== childId),
+                    }
+                  }
+                  return item
+                })
+                onUpdate(elementId, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+              }}
+              onCopy={onCopy ? (copiedElement) => {
+                const { generateId } = require('@/lib/utils')
+                const cloneElement = (el: Element): Element => {
+                  const newId = generateId()
+                  return {
+                    ...el,
+                    id: newId,
+                    children: el.children ? el.children.map(cloneElement) : undefined,
+                  }
+                }
+                const clonedElement = cloneElement(copiedElement)
+                
+                const currentItems = (tabItem as any).__parentItems || []
+                const updatedItems = currentItems.map((item: any) => {
+                  if (item.key === tabKey && Array.isArray(item.children)) {
+                    return {
+                      ...item,
+                      children: [...item.children, clonedElement],
+                    }
+                  }
+                  return item
+                })
+                onUpdate(elementId, {
+                  props: {
+                    items: updatedItems,
+                  },
+                })
+              } : undefined}
+              parentAutoFill={false}
+            />
+          ))}
+        </>
+      )}
+      
+      {/* 文本内容 */}
+      {textContent && !hasElementArray && <div>{textContent}</div>}
+      
+      {/* 拖拽悬停提示 */}
+      {isTabOver && (
+        <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 z-10 pointer-events-none" />
+      )}
+      
+      {/* 空内容提示 */}
+      {!textContent && (!hasElementArray || tabItem.children.length === 0) && (
+        <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none z-0">
+          拖拽组件到这里
+        </div>
+      )}
+    </div>
+  )
+}
+TabContentRenderer.displayName = 'TabContentRenderer'
 
 export function ElementRenderer({
   element,
@@ -525,6 +795,42 @@ export function ElementRenderer({
     onUpdate(element.id, { style: newStyle })
   }
 
+  // 处理 a-tabs 的 items，使用 useMemo 避免无限更新
+  // 注意：onSelect, onUpdate, onDelete, onCopy 应该是稳定的回调函数，不应该在依赖中
+  // 如果它们不稳定，会导致无限更新
+  const tabsProcessedItems = useMemo(() => {
+    if (element.type === 'a-tabs' && element.props?.items && Array.isArray(element.props.items)) {
+      const tabsItems = element.props.items
+      
+      return tabsItems.map((tabItem: any) => {
+        // 将父 items 传递给子组件，以便在更新时使用
+        const tabItemWithParent = {
+          ...tabItem,
+          __parentItems: tabsItems,
+        }
+        
+        return {
+          ...tabItem,
+          // 使用稳定的 key，避免 React 认为这是新的元素
+          children: (
+            <TabContentRenderer
+              key={`${element.id}-${tabItem.key}`}
+              elementId={element.id}
+              tabKey={tabItem.key}
+              tabItem={tabItemWithParent}
+              selectedElementId={selectedElementId}
+              onSelect={onSelect}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onCopy={onCopy}
+            />
+          ),
+        }
+      })
+    }
+    return null
+  }, [element.type, element.id, element.props?.items, selectedElementId, onSelect, onUpdate, onDelete, onCopy])
+
   let content: React.ReactNode = null
 
   switch (element.type) {
@@ -907,6 +1213,39 @@ export function ElementRenderer({
       )
       break
 
+    case 'a-table':
+      // 处理 Table 的 columns 和 dataSource
+      const tableProps = { ...(element.props || {}) }
+      
+      // 确保 columns 和 dataSource 存在
+      if (!tableProps.columns) {
+        tableProps.columns = [
+          { title: '姓名', dataIndex: 'name', key: 'name' },
+          { title: '年龄', dataIndex: 'age', key: 'age' },
+          { title: '地址', dataIndex: 'address', key: 'address' },
+        ]
+      }
+      
+      if (!tableProps.dataSource) {
+        tableProps.dataSource = [
+          { key: '1', name: '张三', age: 32, address: '北京市' },
+          { key: '2', name: '李四', age: 42, address: '上海市' },
+          { key: '3', name: '王五', age: 28, address: '广州市' },
+        ]
+      }
+      
+      // 设置默认 rowKey
+      if (!tableProps.rowKey) {
+        tableProps.rowKey = 'key'
+      }
+      
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Table {...tableProps} />
+        </div>
+      )
+      break
+
     case 'a-datepicker':
       content = (
         <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
@@ -1063,160 +1402,9 @@ export function ElementRenderer({
       // Ant Design Tabs 支持 items 配置方式
       const tabsProps = { ...(element.props || {}) }
       
-      // TabContentRenderer 组件：用于渲染每个 tab 的内容区域，支持拖拽
-      const TabContentRenderer = ({ tabKey, tabItem }: { tabKey: string; tabItem: any }) => {
-        const tabDroppableId = `tab-content-${element.id}-${tabKey}`
-        const { setNodeRef: setTabDroppableRef, isOver: isTabOver } = useDroppable({
-          id: tabDroppableId,
-        })
-        
-        // 如果 children 是 Element 数组（用于页面构建器的元素树）
-        if (Array.isArray(tabItem.children) && tabItem.children.length > 0) {
-          // 检查是否是 Element 对象（有 id 和 type 属性）
-          const isElementArray = tabItem.children.every(
-            (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
-          )
-          
-          if (isElementArray) {
-            // 是 Element 数组，渲染为可拖拽区域
-            return (
-              <div
-                ref={setTabDroppableRef}
-                className="relative min-h-[60px] p-2"
-                style={{ minHeight: '60px', position: 'relative' }}
-                onClick={(e) => {
-                  // 点击 tab 内容区域时，不选中 tabs 本身
-                  e.stopPropagation()
-                }}
-              >
-                {tabItem.children.map((child: Element) => (
-                  <ElementRenderer
-                    key={child.id}
-                    element={child}
-                    selectedElementId={selectedElementId}
-                    onSelect={onSelect}
-                    onUpdate={(childId, updates) => {
-                      // 更新 tab 内容中的子元素
-                      const updatedItems = tabsProps.items.map((item: any) => {
-                        if (item.key === tabKey) {
-                          return {
-                            ...item,
-                            children: item.children.map((c: Element) =>
-                              c.id === childId ? { ...c, ...updates } : c
-                            ),
-                          }
-                        }
-                        return item
-                      })
-                      onUpdate(element.id, {
-                        props: {
-                          ...element.props,
-                          items: updatedItems,
-                        },
-                      })
-                    }}
-                    onDelete={(childId) => {
-                      // 删除 tab 内容中的子元素
-                      const updatedItems = tabsProps.items.map((item: any) => {
-                        if (item.key === tabKey) {
-                          return {
-                            ...item,
-                            children: item.children.filter((c: Element) => c.id !== childId),
-                          }
-                        }
-                        return item
-                      })
-                      onUpdate(element.id, {
-                        props: {
-                          ...element.props,
-                          items: updatedItems,
-                        },
-                      })
-                    }}
-                    onCopy={onCopy ? (copiedElement) => {
-                      // 复制 tab 内容中的子元素
-                      const { generateId } = require('@/lib/utils')
-                      const cloneElement = (el: Element): Element => {
-                        const newId = generateId()
-                        return {
-                          ...el,
-                          id: newId,
-                          children: el.children ? el.children.map(cloneElement) : undefined,
-                        }
-                      }
-                      const clonedElement = cloneElement(copiedElement)
-                      
-                      const updatedItems = tabsProps.items.map((item: any) => {
-                        if (item.key === tabKey) {
-                          return {
-                            ...item,
-                            children: [...item.children, clonedElement],
-                          }
-                        }
-                        return item
-                      })
-                      onUpdate(element.id, {
-                        props: {
-                          ...element.props,
-                          items: updatedItems,
-                        },
-                      })
-                    } : undefined}
-                    parentAutoFill={false}
-                  />
-                ))}
-                {isTabOver && (
-                  <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 z-0 pointer-events-none" />
-                )}
-                {(!tabItem.children || tabItem.children.length === 0) && (
-                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none z-0">
-                    拖拽组件到这里
-                  </div>
-                )}
-              </div>
-            )
-          }
-        }
-        
-        // 如果 children 是字符串、数字或其他简单类型，或者为空
-        const textContent = typeof tabItem.children === 'string' || typeof tabItem.children === 'number'
-          ? String(tabItem.children)
-          : ''
-        
-        return (
-          <div
-            ref={setTabDroppableRef}
-            className="relative min-h-[60px] p-2"
-            style={{ minHeight: '60px', position: 'relative' }}
-            onClick={(e) => {
-              // 点击 tab 内容区域时，不选中 tabs 本身
-              e.stopPropagation()
-            }}
-          >
-            {textContent && <div>{textContent}</div>}
-            {isTabOver && (
-              <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 z-0 pointer-events-none" />
-            )}
-            {!textContent && (
-              <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none z-0">
-                拖拽组件到这里
-              </div>
-            )}
-          </div>
-        )
-      }
-      
-      // 如果使用 items 配置，需要处理 children
-      if (tabsProps.items && Array.isArray(tabsProps.items)) {
-        // 将 items 中的每个 tab 的 children 转换为 React 节点
-        const processedItems = tabsProps.items.map((tabItem: any) => {
-          return {
-            ...tabItem,
-            children: <TabContentRenderer key={tabItem.key} tabKey={tabItem.key} tabItem={tabItem} />,
-          }
-        })
-        
-        tabsProps.items = processedItems
+      // 如果使用 items 配置，使用 useMemo 处理的结果
+      if (tabsProcessedItems) {
+        tabsProps.items = tabsProcessedItems
       } else {
         // 如果没有 items 配置，使用 children 方式（向后兼容）
         // 注意：Ant Design v5+ 主要使用 items，但也可以使用 TabPane 方式
@@ -1225,7 +1413,7 @@ export function ElementRenderer({
       
       content = (
         <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
-          <Tabs {...tabsProps}>
+          <Tabs {...tabsProps} key={element.id}>
             {/* 如果没有 items，使用 children 方式 */}
             {!tabsProps.items && element.children?.map(child => (
               <ElementRenderer
