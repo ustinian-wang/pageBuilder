@@ -2179,6 +2179,7 @@ export function ElementRenderer({
           <div
             {...attributes}
             {...listeners}
+            data-drag-handle
             className="absolute top-0 right-0 bg-blue-600 text-white px-1.5 py-0.5 rounded-bl cursor-move z-50 hover:bg-blue-700"
             title="拖拽移动"
             onClick={(e) => e.stopPropagation()}
@@ -2205,6 +2206,7 @@ export function ElementRenderer({
           <div
             {...attributes}
             {...listeners}
+            data-drag-handle
             className="absolute top-0 right-0 bg-gray-100 hover:bg-gray-200 rounded-bl px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-move z-10"
             title="拖拽移动"
             onClick={(e) => {
