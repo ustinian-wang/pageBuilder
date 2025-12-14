@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
-import { Element } from '@/lib/types'
+import { Element, ElementType } from '@/lib/types'
 import { ResizeHandle } from './ResizeHandle'
 import { generateId } from '@/lib/utils'
 // Ant Design 组件导入
@@ -35,6 +35,7 @@ import {
   Empty,
   Spin,
   Alert,
+  Modal,
 } from 'antd'
 // Ant Design 图标导入
 import {
@@ -141,6 +142,98 @@ const getIconComponent = (iconName: string | undefined): React.ReactNode | undef
   return IconComponent ? React.createElement(IconComponent) : undefined
 }
 
+// 系统组件（与 ComponentPanel 保持一致）
+const systemComponents: Array<{ type: ElementType; label: string; icon: string; description?: string }> = [
+  { type: 'container', label: '容器', icon: '📦', description: '用于包裹其他组件的容器' },
+  { type: 'text', label: '文本', icon: '📝', description: '普通文本元素' },
+  { type: 'button', label: '按钮', icon: '🔘', description: '可点击的按钮' },
+  { type: 'input', label: '输入框', icon: '📥', description: '文本输入框' },
+  { type: 'image', label: '图片', icon: '🖼️', description: '图片元素' },
+  { type: 'card', label: '卡片', icon: '🎴', description: '卡片容器' },
+  { type: 'heading', label: '标题', icon: '📌', description: '标题文本（H1-H6）' },
+  { type: 'paragraph', label: '段落', icon: '📄', description: '段落文本' },
+  { type: 'divider', label: '分割线', icon: '➖', description: '水平分割线' },
+  { type: 'list', label: '列表', icon: '📋', description: '有序或无序列表' },
+  { type: 'form', label: '表单', icon: '📋', description: '表单容器' },
+]
+
+// Ant Design 组件（与 ComponentPanel 保持一致）
+const antdComponents: Array<{ type: ElementType; label: string; icon: string; description?: string }> = [
+  { type: 'a-button', label: 'Button', icon: '🔘', description: 'Ant Design 按钮' },
+  { type: 'a-input', label: 'Input', icon: '📥', description: 'Ant Design 输入框' },
+  { type: 'a-card', label: 'Card', icon: '🎴', description: 'Ant Design 卡片' },
+  { type: 'a-form', label: 'Form', icon: '📋', description: 'Ant Design 表单' },
+  { type: 'a-table', label: 'Table', icon: '📊', description: 'Ant Design 表格' },
+  { type: 'a-select', label: 'Select', icon: '📋', description: 'Ant Design 选择器' },
+  { type: 'a-datepicker', label: 'DatePicker', icon: '📅', description: 'Ant Design 日期选择器' },
+  { type: 'a-radio', label: 'Radio', icon: '🔘', description: 'Ant Design 单选框' },
+  { type: 'a-checkbox', label: 'Checkbox', icon: '☑️', description: 'Ant Design 复选框' },
+  { type: 'a-switch', label: 'Switch', icon: '🔀', description: 'Ant Design 开关' },
+  { type: 'a-slider', label: 'Slider', icon: '🎚️', description: 'Ant Design 滑动输入条' },
+  { type: 'a-rate', label: 'Rate', icon: '⭐', description: 'Ant Design 评分' },
+  { type: 'a-tag', label: 'Tag', icon: '🏷️', description: 'Ant Design 标签' },
+  { type: 'a-badge', label: 'Badge', icon: '🔖', description: 'Ant Design 徽标数' },
+  { type: 'a-avatar', label: 'Avatar', icon: '👤', description: 'Ant Design 头像' },
+  { type: 'a-divider', label: 'Divider', icon: '➖', description: 'Ant Design 分割线' },
+  { type: 'a-space', label: 'Space', icon: '↔️', description: 'Ant Design 间距' },
+  { type: 'a-row', label: 'Row', icon: '➡️', description: 'Ant Design 行' },
+  { type: 'a-col', label: 'Col', icon: '⬇️', description: 'Ant Design 列' },
+  { type: 'a-layout', label: 'Layout', icon: '📐', description: 'Ant Design 布局' },
+  { type: 'a-menu', label: 'Menu', icon: '📑', description: 'Ant Design 导航菜单' },
+  { type: 'a-tabs', label: 'Tabs', icon: '📑', description: 'Ant Design 标签页' },
+  { type: 'a-collapse', label: 'Collapse', icon: '📂', description: 'Ant Design 折叠面板' },
+  { type: 'a-timeline', label: 'Timeline', icon: '⏱️', description: 'Ant Design 时间轴' },
+  { type: 'a-list', label: 'List', icon: '📋', description: 'Ant Design 列表' },
+  { type: 'a-empty', label: 'Empty', icon: '📭', description: 'Ant Design 空状态' },
+  { type: 'a-spin', label: 'Spin', icon: '🌀', description: 'Ant Design 加载中' },
+  { type: 'a-alert', label: 'Alert', icon: '⚠️', description: 'Ant Design 警告提示' },
+]
+
+// 获取默认属性
+const getDefaultProps = (type: ElementType): Record<string, any> => {
+  const defaults: Record<string, Record<string, any>> = {
+    container: {},
+    text: { text: '文本' },
+    button: { text: '按钮', variant: 'primary' },
+    input: { placeholder: '请输入' },
+    image: { src: '', alt: '图片' },
+    card: {},
+    divider: {},
+    heading: { text: '标题', level: 1 },
+    paragraph: { text: '段落文本' },
+    list: { items: ['项目1', '项目2'], ordered: false },
+    form: {},
+    'a-button': { text: 'Button', type: 'default' },
+    'a-input': { placeholder: '请输入' },
+    'a-card': { title: 'Card Title' },
+    'a-form': {},
+    'a-select': { placeholder: '请选择' },
+    'a-datepicker': {},
+    'a-radio': { label: 'Radio' },
+    'a-checkbox': { label: 'Checkbox' },
+    'a-switch': {},
+    'a-slider': {},
+    'a-rate': {},
+    'a-tag': { text: 'Tag' },
+    'a-badge': { count: 0 },
+    'a-avatar': {},
+    'a-divider': {},
+    'a-space': {},
+    'a-row': {},
+    'a-col': { span: 12 },
+    'a-layout': {},
+    'a-menu': {},
+    'a-tabs': { items: [] },
+    'a-collapse': {},
+    'a-timeline': {},
+    'a-list': {},
+    'a-empty': {},
+    'a-spin': {},
+    'a-alert': { message: 'Alert', type: 'info' },
+  }
+  return defaults[type] || {}
+}
+
 // TabContentRenderer 组件：用于渲染每个 tab 的内容区域，支持拖拽
 // 提取为独立组件，避免在每次渲染时重新创建
 // 注意：不使用 React.memo，因为需要响应 tabItem 的变化
@@ -167,6 +260,128 @@ const TabContentRenderer = ({
   const { setNodeRef: setTabDroppableRef, isOver: isTabOver } = useDroppable({
     id: tabDroppableId,
   })
+  
+  // 组件选择对话框状态
+  const [showComponentModal, setShowComponentModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [customComponents, setCustomComponents] = useState<Array<{ type: string; label: string; icon: string; description?: string; elementData?: Element; moduleId?: string }>>([])
+  
+  // 加载自定义模块
+  useEffect(() => {
+    const loadCustomModules = async () => {
+      try {
+        const response = await fetch('/api/modules')
+        const result = await response.json()
+        if (result.success && result.data) {
+          const modules = result.data.map((m: any) => ({
+            type: m.name,
+            label: m.label,
+            icon: m.icon || '📦',
+            description: m.description,
+            elementData: m.element,
+            moduleId: m.id,
+          }))
+          setCustomComponents(modules)
+        }
+      } catch (error) {
+        console.error('加载自定义模块失败:', error)
+      }
+    }
+    loadCustomModules()
+    
+    // 监听自定义模块保存事件
+    const handleModuleSaved = () => {
+      loadCustomModules()
+    }
+    window.addEventListener('customModuleSaved', handleModuleSaved)
+    return () => {
+      window.removeEventListener('customModuleSaved', handleModuleSaved)
+    }
+  }, [])
+  
+  // 过滤组件（根据搜索关键词）
+  const filteredSystemComponents = useMemo(() => {
+    if (!searchQuery) return systemComponents
+    const query = searchQuery.toLowerCase()
+    return systemComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery])
+  
+  const filteredAntdComponents = useMemo(() => {
+    if (!searchQuery) return antdComponents
+    const query = searchQuery.toLowerCase()
+    return antdComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery])
+  
+  const filteredCustomComponents = useMemo(() => {
+    if (!searchQuery) return customComponents
+    const query = searchQuery.toLowerCase()
+    return customComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery, customComponents])
+  
+  const totalMatchCount = filteredSystemComponents.length + filteredAntdComponents.length + filteredCustomComponents.length
+  
+  // 添加组件到 tab content
+  const handleAddComponent = (componentType: ElementType | string, elementData?: Element, moduleId?: string) => {
+    let newElement: Element
+    
+    if (elementData && moduleId) {
+      // 自定义模块：深拷贝并生成新ID
+      const cloneElement = (el: Element): Element => {
+        const newId = generateId()
+        return {
+          ...el,
+          id: newId,
+          moduleId: moduleId,
+          children: el.children ? el.children.map(cloneElement) : undefined,
+        }
+      }
+      newElement = cloneElement(elementData)
+    } else {
+      // 系统组件
+      newElement = {
+        id: generateId(),
+        type: componentType as ElementType,
+        props: getDefaultProps(componentType as ElementType),
+      }
+    }
+    
+    // 更新 tab content
+    const currentItems = (tabItem as any).__parentItems || []
+    const updatedItems = currentItems.map((item: any) => {
+      if (item.key === tabKey) {
+        return {
+          ...item,
+          children: Array.isArray(item.children) 
+            ? [...item.children, newElement]
+            : [newElement],
+        }
+      }
+      return item
+    })
+    
+    onUpdate(elementId, {
+      props: {
+        items: updatedItems,
+      },
+    })
+    
+    setShowComponentModal(false)
+  }
   
   // 如果 children 是 Element 数组（用于页面构建器的元素树）
   if (Array.isArray(tabItem.children) && tabItem.children.length > 0) {
@@ -272,10 +487,31 @@ const TabContentRenderer = ({
             <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 z-0 pointer-events-none" />
           )}
           {(!tabItem.children || tabItem.children.length === 0) && (
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none z-0">
-              拖拽组件到这里
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowComponentModal(true)
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 pointer-events-auto text-sm flex items-center gap-2"
+              >
+                {React.createElement(PlusOutlined, { className: 'text-sm' })}
+                点击添加组件
+              </button>
             </div>
           )}
+          {/* 添加组件按钮（当有内容时也显示） */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowComponentModal(true)
+            }}
+            className="absolute top-2 right-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs flex items-center gap-1 z-10"
+            title="添加组件"
+          >
+            {React.createElement(PlusOutlined, { className: 'text-xs' })}
+            添加
+          </button>
         </div>
       )
     }
@@ -402,10 +638,161 @@ const TabContentRenderer = ({
       
       {/* 空内容提示 */}
       {!textContent && (!hasElementArray || tabItem.children.length === 0) && (
-        <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none z-0">
-          拖拽组件到这里
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowComponentModal(true)
+            }}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 pointer-events-auto text-sm flex items-center gap-2"
+          >
+            {React.createElement(PlusOutlined, { className: 'text-sm' })}
+            点击添加组件
+          </button>
         </div>
       )}
+      
+      {/* 添加组件按钮（当有内容时也显示） */}
+      {hasElementArray && tabItem.children.length > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setShowComponentModal(true)
+          }}
+          className="absolute top-2 right-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs flex items-center gap-1 z-10"
+          title="添加组件"
+        >
+          {React.createElement(PlusOutlined, { className: 'text-xs' })}
+          添加
+        </button>
+      )}
+      
+      {/* 组件选择对话框 */}
+      <Modal
+        title="选择组件"
+        open={showComponentModal}
+        onCancel={() => {
+          setShowComponentModal(false)
+          setSearchQuery('')
+        }}
+        footer={null}
+        width={800}
+      >
+        <div className="flex flex-col max-h-[70vh]">
+          {/* 搜索框 */}
+          <div className="mb-4 flex-shrink-0">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="搜索组件..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+                  aria-label="清除搜索"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {searchQuery && (
+              <div className="text-xs text-gray-500 mt-1">
+                {totalMatchCount > 0 ? `找到 ${totalMatchCount} 个组件` : '未找到匹配的组件'}
+              </div>
+            )}
+          </div>
+          
+          {/* 组件列表 */}
+          <div className="flex-1 overflow-y-auto">
+            {/* 自定义组件 */}
+            {filteredCustomComponents.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                  自定义组件 ({filteredCustomComponents.length})
+                </h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {filteredCustomComponents.map((comp) => (
+                    <button
+                      key={comp.moduleId}
+                      onClick={() => handleAddComponent(comp.type, comp.elementData, comp.moduleId)}
+                      className="p-3 border border-gray-200 rounded hover:border-green-400 hover:bg-green-50 transition-all text-left"
+                      title={comp.description}
+                    >
+                      <div className="text-xl mb-1">{comp.icon}</div>
+                      <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
+                      {comp.description && (
+                        <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* 系统组件 */}
+            {filteredSystemComponents.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                  系统组件 ({filteredSystemComponents.length})
+                </h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {filteredSystemComponents.map((comp) => (
+                    <button
+                      key={comp.type}
+                      onClick={() => handleAddComponent(comp.type)}
+                      className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                      title={comp.description}
+                    >
+                      <div className="text-xl mb-1">{comp.icon}</div>
+                      <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
+                      {comp.description && (
+                        <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Ant Design 组件 */}
+            {filteredAntdComponents.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                  Ant Design 组件 ({filteredAntdComponents.length})
+                </h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {filteredAntdComponents.map((comp) => (
+                    <button
+                      key={comp.type}
+                      onClick={() => handleAddComponent(comp.type)}
+                      className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                      title={comp.description}
+                    >
+                      <div className="text-xl mb-1">{comp.icon}</div>
+                      <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
+                      {comp.description && (
+                        <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* 无搜索结果 */}
+            {searchQuery && totalMatchCount === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-sm">未找到匹配的组件</p>
+                <p className="text-xs mt-1">尝试使用其他关键词搜索</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -795,41 +1182,44 @@ export function ElementRenderer({
     onUpdate(element.id, { style: newStyle })
   }
 
-  // 处理 a-tabs 的 items，使用 useMemo 避免无限更新
-  // 注意：onSelect, onUpdate, onDelete, onCopy 应该是稳定的回调函数，不应该在依赖中
-  // 如果它们不稳定，会导致无限更新
-  const tabsProcessedItems = useMemo(() => {
-    if (element.type === 'a-tabs' && element.props?.items && Array.isArray(element.props.items)) {
-      const tabsItems = element.props.items
+  // 处理 a-tabs 的 items
+  // 注意：不使用 useMemo，因为需要响应 items 数组内部的变化
+  // 每次渲染时都重新计算，确保能正确响应 items 的更新
+  let tabsProcessedItems: any = null
+  if (element.type === 'a-tabs' && element.props?.items && Array.isArray(element.props.items)) {
+    const tabsItems = element.props.items
+    console.log('[ElementRenderer] 渲染 tabs，element.id:', element.id, 'items count:', tabsItems.length)
+    tabsItems.forEach((item: any, index: number) => {
+      const childrenCount = Array.isArray(item.children) ? item.children.length : 0
+      console.log(`[ElementRenderer] Tab ${index}: key=${item.key}, children count=${childrenCount}`)
+    })
+    
+    tabsProcessedItems = tabsItems.map((tabItem: any) => {
+      // 将父 items 传递给子组件，以便在更新时使用
+      const tabItemWithParent = {
+        ...tabItem,
+        __parentItems: tabsItems,
+      }
       
-      return tabsItems.map((tabItem: any) => {
-        // 将父 items 传递给子组件，以便在更新时使用
-        const tabItemWithParent = {
-          ...tabItem,
-          __parentItems: tabsItems,
-        }
-        
-        return {
-          ...tabItem,
-          // 使用稳定的 key，避免 React 认为这是新的元素
-          children: (
-            <TabContentRenderer
-              key={`${element.id}-${tabItem.key}`}
-              elementId={element.id}
-              tabKey={tabItem.key}
-              tabItem={tabItemWithParent}
-              selectedElementId={selectedElementId}
-              onSelect={onSelect}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onCopy={onCopy}
-            />
-          ),
-        }
-      })
-    }
-    return null
-  }, [element.type, element.id, element.props?.items, selectedElementId, onSelect, onUpdate, onDelete, onCopy])
+      return {
+        ...tabItem,
+        // 使用稳定的 key，避免 React 认为这是新的元素
+        children: (
+          <TabContentRenderer
+            key={`${element.id}-${tabItem.key}`}
+            elementId={element.id}
+            tabKey={tabItem.key}
+            tabItem={tabItemWithParent}
+            selectedElementId={selectedElementId}
+            onSelect={onSelect}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onCopy={onCopy}
+          />
+        ),
+      }
+    })
+  }
 
   let content: React.ReactNode = null
 

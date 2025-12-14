@@ -254,28 +254,48 @@ export default function BuilderPage() {
         const tabContentMatch = String(over.id).match(/^tab-content-(.+)-(.+)$/)
         if (tabContentMatch) {
           const [, tabsElementId, tabKey] = tabContentMatch
+          console.log('[拖拽] 拖拽到 tab content:', { tabsElementId, tabKey, newElement, overId: over.id })
           
           const updateTabsItemsRecursive = (els: Element[], targetId: string, targetTabKey: string, newEl: Element): Element[] => {
             return els.map(el => {
               if (el.id === targetId && el.props?.items) {
+                console.log('[拖拽] 找到目标 tabs element:', el.id, 'items count:', el.props.items.length)
+                // 创建新的 items 数组，确保引用变化
                 const updatedItems = el.props.items.map((item: any) => {
                   if (item.key === targetTabKey) {
+                    const oldChildrenCount = Array.isArray(item.children) ? item.children.length : 0
+                    const newChildren = Array.isArray(item.children) 
+                      ? [...item.children, newEl]
+                      : [newEl]
+                    console.log('[拖拽] 更新 tab item:', { 
+                      tabKey, 
+                      oldChildrenCount, 
+                      newChildrenCount: newChildren.length,
+                      newElementId: newEl.id 
+                    })
+                    // 创建新的 item 对象，确保引用变化
                     return {
                       ...item,
-                      children: Array.isArray(item.children) 
-                        ? [...item.children, newEl]
-                        : [newEl],
+                      children: newChildren,
                     }
                   }
-                  return item
+                  // 即使不匹配，也返回新对象以确保引用变化
+                  return { ...item }
                 })
-                return {
+                // 创建新的 element 对象，确保引用变化
+                const updatedElement: Element = {
                   ...el,
                   props: {
                     ...el.props,
                     items: updatedItems,
                   },
                 }
+                console.log('[拖拽] 更新后的 tabs element:', {
+                  id: updatedElement.id,
+                  itemsCount: updatedElement.props.items?.length,
+                  firstItemChildrenCount: updatedElement.props.items?.[0]?.children?.length
+                })
+                return updatedElement
               }
               if (el.children) {
                 return {
@@ -287,7 +307,10 @@ export default function BuilderPage() {
             })
           }
           
-          const updatedElements = updateTabsItemsRecursive(elements, tabsElementId, tabKey, newElement)
+          // 确保创建新的数组引用
+          const updatedElements = [...updateTabsItemsRecursive(elements, tabsElementId, tabKey, newElement)]
+          console.log('[拖拽] 调用 updateElementsWithHistory，更新 elements，数量:', updatedElements.length)
+          console.log('[拖拽] 更新后的完整 elements:', JSON.stringify(updatedElements, null, 2))
           updateElementsWithHistory(updatedElements)
         } else {
           // 拖放到现有元素内
@@ -521,6 +544,17 @@ export default function BuilderPage() {
   const updateElement = (id: string, updates: Partial<Element>) => {
     const updateElementById = (el: Element): Element => {
       if (el.id === id) {
+        // 如果 updates 包含 props，需要合并 props 而不是替换
+        if (updates.props && el.props) {
+          return { 
+            ...el, 
+            ...updates,
+            props: {
+              ...el.props,
+              ...updates.props,
+            }
+          }
+        }
         return { ...el, ...updates }
       }
       if (el.children) {
