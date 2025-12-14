@@ -282,10 +282,27 @@ export default function BuilderPage() {
     // 如果是从组件面板拖拽新组件
     if (active.data.current?.type === 'component') {
       const componentType = active.data.current.componentType as Element['type']
-      const newElement: Element = {
+      let newElement: Element = {
         id: generateId(),
         type: componentType,
         props: getDefaultProps(componentType),
+      }
+      
+      // 如果是 tabs 组件，为每个 tab 创建默认的 container
+      if (componentType === 'a-tabs' && newElement.props?.items && Array.isArray(newElement.props.items)) {
+        const defaultContainerId = generateId()
+        const defaultContainer: Element = {
+          id: defaultContainerId,
+          type: 'container',
+          props: {},
+          undeletable: true, // 标记为不可删除
+        }
+        
+        // 为每个 tab 添加默认 container
+        newElement.props.items = newElement.props.items.map((item: any) => ({
+          ...item,
+          children: [defaultContainer],
+        }))
       }
 
       // 如果拖放到画布根节点
@@ -298,68 +315,95 @@ export default function BuilderPage() {
           const [, tabsElementId, tabKey] = tabContentMatch
           console.log('[拖拽] 拖拽到 tab content:', { tabsElementId, tabKey, newElement, overId: over.id })
           
-          const updateTabsItemsRecursive = (els: Element[], targetId: string, targetTabKey: string, newEl: Element): Element[] => {
-            return els.map(el => {
-              if (el.id === targetId && el.props?.items) {
-                console.log('[拖拽] 找到目标 tabs element:', el.id, 'items count:', el.props.items.length)
-                // 创建新的 items 数组，确保引用变化
-                const updatedItems = el.props.items.map((item: any) => {
-                  if (item.key === targetTabKey) {
-                    const oldChildrenCount = Array.isArray(item.children) ? item.children.length : 0
-                    const newChildren = Array.isArray(item.children) 
-                      ? [...item.children, newEl]
-                      : [newEl]
-                    console.log('[拖拽] 更新 tab item:', { 
-                      tabKey, 
-                      oldChildrenCount, 
-                      newChildrenCount: newChildren.length,
-                      newElementId: newEl.id 
-                    })
-                    // 创建新的 item 对象，确保引用变化
-                    return {
-                      ...item,
-                      children: newChildren,
+          // 使用与右键弹窗相同的更新方式：通过 updateElement 更新 tabs 的 items
+          const tabsElement = findElementById(elements, tabsElementId)
+          if (tabsElement && tabsElement.type === 'a-tabs' && tabsElement.props?.items && Array.isArray(tabsElement.props.items)) {
+            // 获取当前的 items 数组
+            const currentItems = tabsElement.props.items
+            // 更新对应的 tab item
+            const updatedItems = currentItems.map((item: any) => {
+              if (item.key === tabKey) {
+                return {
+                  ...item,
+                  children: Array.isArray(item.children) 
+                    ? [...item.children, newElement]
+                    : [newElement],
+                }
+              }
+              return item
+            })
+            
+            // 使用 updateElement 更新，与右键弹窗的方式一致
+            updateElement(tabsElementId, {
+              props: {
+                items: updatedItems,
+              },
+            })
+            console.log('[拖拽] 通过 updateElement 更新 tabs items，tabsElementId:', tabsElementId, 'tabKey:', tabKey)
+          } else {
+            console.warn('[拖拽] 未找到 tabs 元素或 items 不存在:', { tabsElementId, tabsElement: tabsElement ? { id: tabsElement.id, type: tabsElement.type } : null })
+          }
+        } else {
+          // 检查是否是拖拽到 tabs 元素本身（不是具体的tab-content）
+          const tabsElement = findElementById(elements, over.id as string)
+          if (tabsElement && tabsElement.type === 'a-tabs' && tabsElement.props?.items && Array.isArray(tabsElement.props.items) && tabsElement.props.items.length > 0) {
+            // 拖拽到 tabs 元素本身，添加到当前激活的 tab（使用 activeKey，如果没有则使用第一个 tab）
+            const activeKey = tabsElement.props.activeKey || tabsElement.props.defaultActiveKey
+            const targetTabKey = activeKey || tabsElement.props.items[0]?.key
+            console.log('[拖拽] 拖拽到 tabs 元素本身，添加到激活的 tab:', { tabsElementId: tabsElement.id, activeKey, targetTabKey })
+            
+            if (targetTabKey) {
+              // 使用与右键弹窗相同的更新方式：通过 updateElement 更新 tabs 的 items
+              const currentItems = tabsElement.props.items
+              const updatedItems = currentItems.map((item: any) => {
+                if (item.key === targetTabKey) {
+                  // 确保 tab 有默认 container，如果没有则创建一个
+                  let tabChildren = Array.isArray(item.children) ? item.children : []
+                  let defaultContainer = tabChildren.find((child: Element) => child.type === 'container' && child.undeletable)
+                  
+                  if (!defaultContainer) {
+                    // 创建默认 container
+                    defaultContainer = {
+                      id: generateId(),
+                      type: 'container',
+                      props: {},
+                      undeletable: true,
+                    }
+                    tabChildren = [defaultContainer]
+                  }
+                  
+                  // 将新元素添加到 container 的 children 中
+                  const containerIndex = tabChildren.findIndex((child: Element) => child.id === defaultContainer.id)
+                  if (containerIndex >= 0) {
+                    const container = tabChildren[containerIndex]
+                    tabChildren[containerIndex] = {
+                      ...container,
+                      children: [...(container.children || []), newElement],
                     }
                   }
-                  // 即使不匹配，也返回新对象以确保引用变化
-                  return { ...item }
-                })
-                // 创建新的 element 对象，确保引用变化
-                const updatedElement: Element = {
-                  ...el,
-                  props: {
-                    ...el.props,
-                    items: updatedItems,
-                  },
+                  
+                  return {
+                    ...item,
+                    children: tabChildren,
+                  }
                 }
-                console.log('[拖拽] 更新后的 tabs element:', {
-                  id: updatedElement.id,
-                  itemsCount: updatedElement.props.items?.length,
-                  firstItemChildrenCount: updatedElement.props.items?.[0]?.children?.length
-                })
-                return updatedElement
-              }
-              if (el.children) {
-                return {
-                  ...el,
-                  children: updateTabsItemsRecursive(el.children, targetId, targetTabKey, newEl),
-                }
-              }
-              return el
-            })
-          }
-          
-          // 确保创建新的数组引用
-          const updatedElements = [...updateTabsItemsRecursive(elements, tabsElementId, tabKey, newElement)]
-          console.log('[拖拽] 调用 updateElementsWithHistory，更新 elements，数量:', updatedElements.length)
-          console.log('[拖拽] 更新后的完整 elements:', JSON.stringify(updatedElements, null, 2))
-          updateElementsWithHistory(updatedElements)
-        } else {
-          // 拖放到现有元素内
-          const targetElement = findElementById(elements, over.id as string)
-          if (targetElement) {
-            const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
-            updateElementsWithHistory(newElements)
+                return item
+              })
+              
+              // 使用 updateElement 更新，与右键弹窗的方式一致
+              updateElement(tabsElement.id, {
+                props: {
+                  items: updatedItems,
+                },
+              })
+              console.log('[拖拽] 通过 updateElement 更新 tabs items（拖到tabs本身），tabsElementId:', tabsElement.id, 'targetTabKey:', targetTabKey)
+            }
+          } else {
+            // 拖放到现有元素内
+            if (tabsElement) {
+              const newElements = addElementToParentInternal(elements, tabsElement.id, newElement)
+              updateElementsWithHistory(newElements)
+            }
           }
         }
       }
@@ -389,47 +433,88 @@ export default function BuilderPage() {
         const tabContentMatch = String(over.id).match(/^tab-content-(.+)-(.+)$/)
         if (tabContentMatch) {
           const [, tabsElementId, tabKey] = tabContentMatch
+          console.log('[拖拽] 拖拽自定义模块到 tab content:', { tabsElementId, tabKey, newElement, overId: over.id })
           
-          const updateTabsItemsRecursive = (els: Element[], targetId: string, targetTabKey: string, newEl: Element): Element[] => {
-            return els.map(el => {
-              if (el.id === targetId && el.props?.items) {
-                const updatedItems = el.props.items.map((item: any) => {
-                  if (item.key === targetTabKey) {
+          // 使用与右键弹窗相同的更新方式：通过 updateElement 更新 tabs 的 items
+          const tabsElement = findElementById(elements, tabsElementId)
+          if (tabsElement && tabsElement.type === 'a-tabs' && tabsElement.props?.items && Array.isArray(tabsElement.props.items)) {
+            // 获取当前的 items 数组
+            const currentItems = tabsElement.props.items
+            // 更新对应的 tab item
+            const updatedItems = currentItems.map((item: any) => {
+              if (item.key === tabKey) {
+                return {
+                  ...item,
+                  children: Array.isArray(item.children) 
+                    ? [...item.children, newElement]
+                    : [newElement],
+                }
+              }
+              return item
+            })
+            
+            // 使用 updateElement 更新，与右键弹窗的方式一致
+            updateElement(tabsElementId, {
+              props: {
+                items: updatedItems,
+              },
+            })
+            console.log('[拖拽] 通过 updateElement 更新 tabs items（自定义模块），tabsElementId:', tabsElementId, 'tabKey:', tabKey)
+          } else {
+            console.warn('[拖拽] 未找到 tabs 元素或 items 不存在（自定义模块）:', { tabsElementId, tabsElement: tabsElement ? { id: tabsElement.id, type: tabsElement.type } : null })
+          }
+        } else {
+          // 检查是否是拖拽到 tabs 元素本身（不是具体的tab-content）
+          const tabsElement = findElementById(elements, over.id as string)
+          if (tabsElement && tabsElement.type === 'a-tabs' && tabsElement.props?.items && Array.isArray(tabsElement.props.items) && tabsElement.props.items.length > 0) {
+            // 拖拽到 tabs 元素本身，添加到当前激活的 tab（使用 activeKey，如果没有则使用第一个 tab）
+            const activeKey = tabsElement.props.activeKey || tabsElement.props.defaultActiveKey
+            const targetTabKey = activeKey || tabsElement.props.items[0]?.key
+            console.log('[拖拽] 拖拽到 tabs 元素本身（自定义模块），添加到激活的 tab:', { tabsElementId: tabsElement.id, activeKey, targetTabKey })
+            
+            if (targetTabKey) {
+              const updateTabsItemsRecursive = (els: Element[], targetId: string, targetTabKey: string, newEl: Element): Element[] => {
+                return els.map(el => {
+                  if (el.id === targetId && el.props?.items) {
+                    const updatedItems = el.props.items.map((item: any) => {
+                      if (item.key === targetTabKey) {
+                        const newChildren = Array.isArray(item.children) 
+                          ? [...item.children, newEl]
+                          : [newEl]
+                        return {
+                          ...item,
+                          children: newChildren,
+                        }
+                      }
+                      return { ...item }
+                    })
                     return {
-                      ...item,
-                      children: Array.isArray(item.children) 
-                        ? [...item.children, newEl]
-                        : [newEl],
+                      ...el,
+                      props: {
+                        ...el.props,
+                        items: updatedItems,
+                      },
                     }
                   }
-                  return item
+                  if (el.children) {
+                    return {
+                      ...el,
+                      children: updateTabsItemsRecursive(el.children, targetId, targetTabKey, newEl),
+                    }
+                  }
+                  return el
                 })
-                return {
-                  ...el,
-                  props: {
-                    ...el.props,
-                    items: updatedItems,
-                  },
-                }
               }
-              if (el.children) {
-                return {
-                  ...el,
-                  children: updateTabsItemsRecursive(el.children, targetId, targetTabKey, newEl),
-                }
-              }
-              return el
-            })
-          }
-          
-          const updatedElements = updateTabsItemsRecursive(elements, tabsElementId, tabKey, newElement)
-          updateElementsWithHistory(updatedElements)
-        } else {
-          // 拖放到现有元素内
-          const targetElement = findElementById(elements, over.id as string)
-          if (targetElement) {
-            const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
-            updateElementsWithHistory(newElements)
+              
+              const updatedElements = [...updateTabsItemsRecursive(elements, tabsElement.id, targetTabKey, newElement)]
+              updateElementsWithHistory(updatedElements)
+            }
+          } else {
+            // 拖放到现有元素内
+            if (tabsElement) {
+              const newElements = addElementToParentInternal(elements, tabsElement.id, newElement)
+              updateElementsWithHistory(newElements)
+            }
           }
         }
       }
@@ -652,16 +737,58 @@ export default function BuilderPage() {
   }
 
   const deleteElement = (id: string) => {
-    const removeElement = (els: Element[]): Element[] => {
+    // 递归删除函数：从元素数组中删除指定ID的元素
+    const removeElementFromArray = (els: Element[]): Element[] => {
       return els
         .filter(el => el.id !== id)
-        .map(el => ({
-          ...el,
-          children: el.children ? removeElement(el.children) : undefined,
-        }))
+        .map(el => {
+          // 递归处理子元素
+          let updatedEl = { ...el }
+          if (el.children) {
+            updatedEl = {
+              ...updatedEl,
+              children: removeElementFromArray(el.children),
+            }
+          }
+          
+          // 处理 a-tabs 的 props.items 中的 children
+          if (el.type === 'a-tabs' && el.props?.items && Array.isArray(el.props.items)) {
+            const updatedItems = el.props.items.map((item: any) => {
+              if (item.children && Array.isArray(item.children)) {
+                const updatedChildren = removeElementFromArray(item.children)
+                // 检查是否有子元素被删除
+                if (updatedChildren.length !== item.children.length) {
+                  return {
+                    ...item,
+                    children: updatedChildren,
+                  }
+                }
+              }
+              return item
+            })
+            
+            // 检查 items 是否有变化
+            const itemsChanged = updatedItems.some((item: any, index: number) => 
+              item !== el.props.items[index]
+            )
+            
+            if (itemsChanged) {
+              updatedEl = {
+                ...updatedEl,
+                props: {
+                  ...updatedEl.props,
+                  items: updatedItems,
+                },
+              }
+            }
+          }
+          
+          return updatedEl
+        })
     }
 
-    const newElements = removeElement(elements)
+    // 从顶层 elements 中删除
+    const newElements = removeElementFromArray(elements)
     updateElementsWithHistory(newElements)
     if (selectedElementId === id) {
       setSelectedElementId(null)
@@ -1151,7 +1278,12 @@ function getDefaultProps(type: Element['type']): Record<string, any> {
     'a-col': { span: 12 },
     'a-layout': {},
     'a-menu': {},
-    'a-tabs': { items: [] },
+    'a-tabs': { 
+      items: [
+        { key: 'tab-1', label: '标签页 1', children: [] },
+        { key: 'tab-2', label: '标签页 2', children: [] },
+      ]
+    },
     'a-table': {
       columns: [
         { title: '姓名', dataIndex: 'name', key: 'name' },

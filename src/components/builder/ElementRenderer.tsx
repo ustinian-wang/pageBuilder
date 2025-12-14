@@ -223,7 +223,12 @@ const getDefaultProps = (type: ElementType): Record<string, any> => {
     'a-col': { span: 12 },
     'a-layout': {},
     'a-menu': {},
-    'a-tabs': { items: [] },
+    'a-tabs': { 
+      items: [
+        { key: 'tab-1', label: '标签页 1', children: [] },
+        { key: 'tab-2', label: '标签页 2', children: [] },
+      ]
+    },
     'a-collapse': {},
     'a-timeline': {},
     'a-list': {},

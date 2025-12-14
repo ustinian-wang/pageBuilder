@@ -58,6 +58,7 @@ export interface BaseElement {
   style?: Record<string, string | number>
   className?: string
   moduleId?: string // 如果元素来自自定义模块，保存模块ID
+  undeletable?: boolean // 标记元素不可删除（如 tabs content 中的默认 container）
 }
 
 export interface Element extends BaseElement {
