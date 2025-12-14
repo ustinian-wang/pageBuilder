@@ -56,3 +56,12 @@ export interface ComponentProps {
   [key: string]: any
 }
 
+// 组件定义（用于组件库）
+export interface ComponentDefinition {
+  type: ElementType
+  label: string
+  icon: string
+  category: 'system' | 'custom'
+  description?: string
+}
+

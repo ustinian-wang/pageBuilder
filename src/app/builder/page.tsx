@@ -223,7 +223,11 @@ export default function BuilderPage() {
       <div className="flex-1 flex overflow-hidden">
         <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           {/* 左侧组件面板 */}
-          <ComponentPanel />
+          <ComponentPanel
+            elements={elements}
+            selectedElementId={selectedElementId}
+            onSelect={setSelectedElementId}
+          />
 
           {/* 中间画布 */}
           <div className="flex-1 overflow-auto bg-gray-100 p-8">
