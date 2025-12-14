@@ -66,14 +66,57 @@ export function TabsPanel({
   useEffect(() => {
     const currentItems = element.props?.items
     if (Array.isArray(currentItems)) {
-      const prevItemsStr = JSON.stringify(prevPropsRef.current.items)
-      const currentItemsStr = JSON.stringify(currentItems)
-      if (prevItemsStr !== currentItemsStr) {
-        setItems(currentItems.length > 0 ? currentItems : [
-          { key: 'tab-1', label: '标签页 1', children: [] },
-          { key: 'tab-2', label: '标签页 2', children: [] },
-        ])
-        prevPropsRef.current.items = currentItems
+      // 使用更可靠的比较方式：比较 items 的长度和每个 item 的 key
+      const prevItems = prevPropsRef.current.items || []
+      const prevKeys = prevItems.map((item: any) => item?.key).join(',')
+      const currentKeys = currentItems.map((item: any) => item?.key).join(',')
+      const prevLength = prevItems.length
+      const currentLength = currentItems.length
+      
+      // 如果长度或 keys 发生变化，或者 items 为空，则更新
+      if (prevLength !== currentLength || prevKeys !== currentKeys || currentLength === 0) {
+        if (currentLength === 0) {
+          // 如果 items 为空，设置默认值
+          const defaultItems = [
+            { key: 'tab-1', label: '标签页 1', children: [] },
+            { key: 'tab-2', label: '标签页 2', children: [] },
+          ]
+          setItems(defaultItems)
+          prevPropsRef.current.items = defaultItems
+        } else {
+          // 确保每个 item 都有 children 属性（即使是空数组）
+          // 如果 item 没有 children，设置为空数组，避免丢失已有的 children
+          const normalizedItems = currentItems.map((item: any) => ({
+            ...item,
+            children: item.children !== undefined ? item.children : [],
+          }))
+          setItems(normalizedItems)
+          prevPropsRef.current.items = normalizedItems
+        }
+      } else {
+        // 即使 keys 和长度相同，也要检查是否有 item 的 children 丢失
+        // 如果发现某个 item 的 children 从有值变为 undefined，需要更新
+        // 但是要注意：新添加的标签页（key 不在 prevItems 中）应该保持空数组
+        let needsUpdate = false
+        const prevItemsMap = new Map(prevItems.map((item: any) => [item?.key, item]))
+        const normalizedItems = currentItems.map((item: any) => {
+          const prevItem = prevItemsMap.get(item?.key)
+          // 如果这个 item 在之前存在，且当前没有 children 但之前有，保留之前的 children
+          if (prevItem && item.children === undefined && prevItem.children !== undefined) {
+            needsUpdate = true
+            return { ...item, children: prevItem.children }
+          }
+          // 如果是新添加的标签页（prevItem 不存在），确保 children 是空数组
+          // 如果 item 没有 children，设置为空数组
+          return {
+            ...item,
+            children: item.children !== undefined ? item.children : [],
+          }
+        })
+        if (needsUpdate) {
+          setItems(normalizedItems)
+          prevPropsRef.current.items = normalizedItems
+        }
       }
     }
     if (element.props?.activeKey !== prevPropsRef.current.activeKey) {

@@ -2093,7 +2093,7 @@ export function ElementRenderer({
       // Ant Design Tabs 支持 items 配置方式
       const tabsProps = { ...(element.props || {}) }
       
-      // 如果使用 items 配置，使用 useMemo 处理的结果
+      // 如果使用 items 配置，使用处理的结果
       if (tabsProcessedItems) {
         tabsProps.items = tabsProcessedItems
       } else {
@@ -2102,9 +2102,42 @@ export function ElementRenderer({
         // 这里保持原有逻辑
       }
       
+      // 处理 tab 切换事件
+      const handleTabChange = (activeKey: string) => {
+        // 更新 activeKey
+        onUpdate(element.id, {
+          props: {
+            ...element.props,
+            activeKey: activeKey,
+          },
+        })
+      }
+      
+      // 确保使用受控的 activeKey（如果设置了 activeKey，使用它；否则使用 defaultActiveKey）
+      // 如果都没有，使用第一个 tab 的 key
+      const currentActiveKey = tabsProps.activeKey !== undefined 
+        ? tabsProps.activeKey 
+        : (tabsProps.defaultActiveKey !== undefined 
+            ? tabsProps.defaultActiveKey 
+            : (tabsProps.items && tabsProps.items.length > 0 ? tabsProps.items[0].key : undefined))
+      
+      // 移除 defaultActiveKey，使用 activeKey 和 onChange 实现受控组件
+      const { defaultActiveKey, ...controlledTabsProps } = tabsProps
+      
+      // 生成基于 items 的 key，确保当 items 变化时 Tabs 组件会重新渲染
+      const itemsKeys = element.props?.items 
+        ? element.props.items.map((item: any) => item?.key || '').join('-')
+        : ''
+      const tabsKey = `${element.id}-${itemsKeys || 'no-items'}`
+      
       content = (
         <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
-          <Tabs {...tabsProps} key={element.id}>
+          <Tabs 
+            {...controlledTabsProps} 
+            activeKey={currentActiveKey}
+            onChange={handleTabChange}
+            key={tabsKey}
+          >
             {/* 如果没有 items，使用 children 方式 */}
             {!tabsProps.items && element.children?.map(child => (
               <ElementRenderer
