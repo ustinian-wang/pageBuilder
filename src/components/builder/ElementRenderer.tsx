@@ -1,10 +1,84 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useDroppable } from '@dnd-kit/core'
+import React, { useState, useEffect } from 'react'
+import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { Element } from '@/lib/types'
 import { ResizeHandle } from './ResizeHandle'
 import { generateId } from '@/lib/utils'
+// Ant Design 组件导入
+import {
+  Button,
+  Input,
+  Card,
+  Form,
+  Table,
+  Select,
+  DatePicker,
+  Radio,
+  Checkbox,
+  Switch,
+  Slider,
+  Rate,
+  Tag,
+  Badge,
+  Avatar,
+  Divider as AntdDivider,
+  Space,
+  Row,
+  Col,
+  Layout,
+  Menu,
+  Tabs,
+  Collapse,
+  Timeline,
+  List,
+  Empty,
+  Spin,
+  Alert,
+} from 'antd'
+// Ant Design 图标导入
+import {
+  SearchOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SaveOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  UserOutlined,
+  UserAddOutlined,
+  TeamOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  HomeOutlined,
+  MenuOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  FileOutlined,
+  FolderOutlined,
+  FileAddOutlined,
+  FileTextOutlined,
+  PictureOutlined,
+  MailOutlined,
+  MessageOutlined,
+  PhoneOutlined,
+  NotificationOutlined,
+  HeartOutlined,
+  StarOutlined,
+  LikeOutlined,
+  ShareAltOutlined,
+  ReloadOutlined,
+  SyncOutlined,
+  LoadingOutlined,
+  InfoCircleOutlined,
+  QuestionCircleOutlined,
+  WarningOutlined,
+} from '@ant-design/icons'
 
 interface ElementRendererProps {
   element: Element
@@ -12,7 +86,59 @@ interface ElementRendererProps {
   onSelect: (id: string | null) => void
   onUpdate: (id: string, updates: Partial<Element>) => void
   onDelete: (id: string) => void
+  onCopy?: (element: Element) => void // 复制元素回调
   parentAutoFill?: boolean // 父容器是否启用自动填充
+}
+
+// 图标映射表
+const iconMap: Record<string, React.ComponentType<any>> = {
+  SearchOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SaveOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  UserOutlined,
+  UserAddOutlined,
+  TeamOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  HomeOutlined,
+  MenuOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  FileOutlined,
+  FolderOutlined,
+  FileAddOutlined,
+  FileTextOutlined,
+  PictureOutlined,
+  MailOutlined,
+  MessageOutlined,
+  PhoneOutlined,
+  NotificationOutlined,
+  HeartOutlined,
+  StarOutlined,
+  LikeOutlined,
+  ShareAltOutlined,
+  ReloadOutlined,
+  SyncOutlined,
+  LoadingOutlined,
+  InfoCircleOutlined,
+  QuestionCircleOutlined,
+  WarningOutlined,
+}
+
+// 根据图标名称获取图标组件
+const getIconComponent = (iconName: string | undefined): React.ReactNode | undefined => {
+  if (!iconName) return undefined
+  const IconComponent = iconMap[iconName]
+  return IconComponent ? React.createElement(IconComponent) : undefined
 }
 
 export function ElementRenderer({
@@ -21,11 +147,26 @@ export function ElementRenderer({
   onSelect,
   onUpdate,
   onDelete,
+  onCopy,
   parentAutoFill = false,
 }: ElementRendererProps) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: element.id,
   })
+
+  const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
+    id: element.id,
+    data: {
+      type: 'element',
+      element: element,
+    },
+  })
+
+  // 合并两个 ref
+  const setNodeRef = (node: HTMLElement | null) => {
+    setDroppableRef(node)
+    setDraggableRef(node)
+  }
 
   const isSelected = selectedElementId === element.id
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
@@ -36,12 +177,29 @@ export function ElementRenderer({
   const [includeChildren, setIncludeChildren] = useState(true)
   const [saving, setSaving] = useState(false)
   const [checkingName, setCheckingName] = useState(false)
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
 
   const handleClick = (e: React.MouseEvent) => {
+    // 如果刚刚拖拽过，不触发点击选择
+    if (dragStartPos) {
+      const dx = Math.abs(e.clientX - dragStartPos.x)
+      const dy = Math.abs(e.clientY - dragStartPos.y)
+      if (dx > 5 || dy > 5) {
+        // 拖拽距离超过5px，认为是拖拽而不是点击
+        setDragStartPos(null)
+        return
+      }
+      setDragStartPos(null)
+    }
     e.stopPropagation()
     onSelect(element.id)
     // 关闭右键菜单
     setContextMenu(null)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // 记录鼠标按下位置
+    setDragStartPos({ x: e.clientX, y: e.clientY })
   }
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -63,6 +221,13 @@ export function ElementRenderer({
 
   const handleDeleteMenuClick = () => {
     onDelete(element.id)
+    setContextMenu(null)
+  }
+
+  const handleCopyMenuClick = () => {
+    if (onCopy) {
+      onCopy(element)
+    }
     setContextMenu(null)
   }
 
@@ -256,7 +421,7 @@ export function ElementRenderer({
       baseStyle.minWidth = '100px'
     }
     if (!baseStyle.minHeight) {
-      baseStyle.minHeight = '50px'
+      baseStyle.minHeight = '16px'
     }
   }
 
@@ -280,9 +445,14 @@ export function ElementRenderer({
       baseStyle.alignItems = element.props.alignItems as any
     }
     
-    // 子元素自动填充
-    if (element.children && element.children.length > 0) {
-      baseStyle.gap = baseStyle.gap || '0px'
+    // 设置 gap（如果指定了）
+    if (element.props.gap !== undefined && element.props.gap !== null && element.props.gap !== '') {
+      // 如果gap是纯数字，添加px单位；否则使用原始值
+      const gapValue = String(element.props.gap)
+      baseStyle.gap = /^\d+$/.test(gapValue) ? `${gapValue}px` : gapValue
+    } else if (element.children && element.children.length > 0) {
+      // 如果没有指定gap但有子元素，默认设置为0px（这样可以清除浏览器默认样式）
+      baseStyle.gap = '0px'
     }
   }
 
@@ -303,6 +473,7 @@ export function ElementRenderer({
   const editorStyle: React.CSSProperties = {
     outline: isSelected ? '2px solid #3b82f6' : 'none',
     outlineOffset: '2px',
+    opacity: isDragging ? 0.5 : 1,
   }
 
   // 容器特有的编辑器视觉提示样式
@@ -370,6 +541,7 @@ export function ElementRenderer({
               onSelect={onSelect}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              onCopy={onCopy}
               parentAutoFill={element.props?.autoFill === true}
             />
           ))}
@@ -470,6 +642,7 @@ export function ElementRenderer({
               onSelect={onSelect}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              onCopy={onCopy}
               parentAutoFill={false}
             />
           ))}
@@ -556,6 +729,7 @@ export function ElementRenderer({
               onSelect={onSelect}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              onCopy={onCopy}
               parentAutoFill={false}
             />
           ))}
@@ -563,6 +737,298 @@ export function ElementRenderer({
             <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50" />
           )}
         </form>
+      )
+      break
+
+    // Ant Design 组件
+    case 'a-button':
+      // 处理图标：如果 props 中有 icon 字符串，转换为图标组件
+      const buttonProps = { ...(element.props || {}) }
+      if (buttonProps.icon && typeof buttonProps.icon === 'string') {
+        const IconComponent = getIconComponent(buttonProps.icon)
+        if (IconComponent) {
+          buttonProps.icon = IconComponent
+        } else {
+          // 如果找不到对应的图标，移除 icon 属性
+          delete buttonProps.icon
+        }
+      }
+      
+      content = (
+        <div 
+          ref={setNodeRef} 
+          onClick={handleClick} 
+          onContextMenu={handleContextMenu} 
+          style={style} 
+          className={element.className}
+        >
+          <Button 
+            {...buttonProps}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleClick(e as any)
+            }}
+          >
+            {element.props?.children || element.props?.text || 'Button'}
+          </Button>
+        </div>
+      )
+      break
+
+    case 'a-input':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Input {...(element.props || {})} placeholder={element.props?.placeholder || '请输入'} />
+        </div>
+      )
+      break
+
+    case 'a-card':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Card {...(element.props || {})} title={element.props?.title}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Card>
+        </div>
+      )
+      break
+
+    case 'a-form':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Form {...(element.props || {})}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Form>
+        </div>
+      )
+      break
+
+    case 'a-select':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Select {...(element.props || {})} placeholder={element.props?.placeholder || '请选择'} style={{ width: '100%' }} />
+        </div>
+      )
+      break
+
+    case 'a-datepicker':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <DatePicker {...(element.props || {})} style={{ width: '100%' }} />
+        </div>
+      )
+      break
+
+    case 'a-radio':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Radio {...(element.props || {})}>{element.props?.children || element.props?.label || 'Radio'}</Radio>
+        </div>
+      )
+      break
+
+    case 'a-checkbox':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Checkbox {...(element.props || {})}>{element.props?.children || element.props?.label || 'Checkbox'}</Checkbox>
+        </div>
+      )
+      break
+
+    case 'a-switch':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Switch {...(element.props || {})} />
+        </div>
+      )
+      break
+
+    case 'a-slider':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Slider {...(element.props || {})} />
+        </div>
+      )
+      break
+
+    case 'a-rate':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Rate {...(element.props || {})} />
+        </div>
+      )
+      break
+
+    case 'a-tag':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Tag {...(element.props || {})}>{element.props?.children || element.props?.text || 'Tag'}</Tag>
+        </div>
+      )
+      break
+
+    case 'a-badge':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Badge {...(element.props || {})}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Badge>
+        </div>
+      )
+      break
+
+    case 'a-avatar':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Avatar {...(element.props || {})}>{element.props?.children || element.props?.text}</Avatar>
+        </div>
+      )
+      break
+
+    case 'a-divider':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <AntdDivider {...(element.props || {})}>{element.props?.children || element.props?.text}</AntdDivider>
+        </div>
+      )
+      break
+
+    case 'a-space':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Space {...(element.props || {})}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Space>
+        </div>
+      )
+      break
+
+    case 'a-row':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Row {...(element.props || {})}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Row>
+        </div>
+      )
+      break
+
+    case 'a-col':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Col {...(element.props || {})}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Col>
+        </div>
+      )
+      break
+
+    case 'a-tabs':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Tabs {...(element.props || {})}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Tabs>
+        </div>
+      )
+      break
+
+    case 'a-alert':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Alert {...(element.props || {})} message={element.props?.message || 'Alert'} description={element.props?.description} />
+        </div>
+      )
+      break
+
+    case 'a-spin':
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Spin {...(element.props || {})}>
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                parentAutoFill={false}
+              />
+            ))}
+          </Spin>
+        </div>
       )
       break
 
@@ -586,13 +1052,68 @@ export function ElementRenderer({
         className="relative group" 
         data-element-id={element.id}
         onContextMenu={handleContextMenu}
+        onMouseDown={handleMouseDown}
       >
         {content}
+        {/* 拖拽手柄 - 悬停或选中时显示 */}
+        {(isSelected || isDragging) && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="absolute top-0 right-0 bg-blue-600 text-white px-1.5 py-0.5 rounded-bl cursor-move z-50 hover:bg-blue-700"
+            title="拖拽移动"
+            onClick={(e) => e.stopPropagation()}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3 w-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </div>
+        )}
+        {/* 未选中时，悬停显示拖拽手柄 */}
+        {!isSelected && !isDragging && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="absolute top-0 right-0 bg-gray-100 hover:bg-gray-200 rounded-bl px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-move z-10"
+            title="拖拽移动"
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect(element.id)
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3 w-3 text-gray-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </div>
+        )}
         {isSelected && (
-          <div className="absolute -top-8 left-0 bg-blue-600 text-white text-xs px-2 py-1 rounded z-50">
-            {element.type}
+          <div className="absolute -top-8 left-0 bg-blue-600 text-white text-xs px-2 py-1 rounded z-50 flex items-center gap-2">
+            <span>{element.type}</span>
             <button
-              className="ml-2 text-red-200 hover:text-white"
+              className="text-red-200 hover:text-white"
               onClick={(e) => {
                 e.stopPropagation()
                 onDelete(element.id)
@@ -634,6 +1155,27 @@ export function ElementRenderer({
                 />
               </svg>
               设置样式
+            </button>
+            <div className="border-t border-gray-200 my-1"></div>
+            <button
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+              onClick={handleCopyMenuClick}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+              复制
             </button>
             <div className="border-t border-gray-200 my-1"></div>
             {/* 如果元素来自自定义模块，显示保存菜单 */}
@@ -804,4 +1346,5 @@ export function ElementRenderer({
     </>
   )
 }
+
 

@@ -88,6 +88,13 @@ export class VueGenerator {
       if (props.alignItems) {
         finalStyle.alignItems = props.alignItems
       }
+      
+      // 处理 gap
+      if (props.gap !== undefined && props.gap !== null && props.gap !== '') {
+        const gapValue = String(props.gap)
+        // 如果gap是纯数字，添加px单位；否则使用原始值
+        finalStyle.gap = /^\d+$/.test(gapValue) ? `${gapValue}px` : gapValue
+      }
     }
     
     // 如果父容器启用了自动填充，子元素需要 flex: 1
@@ -153,7 +160,7 @@ export class VueGenerator {
   }
 
   private getElementTag(type: ElementType, props: Record<string, any>): string {
-    const tagMap: Record<ElementType, string> = {
+    const tagMap: Record<string, string> = {
       container: 'div',
       text: 'span',
       button: 'button',
@@ -173,6 +180,11 @@ export class VueGenerator {
     }
     if (type === 'list') {
       return props?.ordered ? 'ol' : 'ul'
+    }
+
+    // 处理 Ant Design 组件：将 a- 前缀替换为 fa-
+    if (type.startsWith('a-')) {
+      return type.replace(/^a-/, 'fa-')
     }
 
     return tagMap[type] || 'div'

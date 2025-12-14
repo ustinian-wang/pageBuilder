@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -8,8 +8,10 @@ import { ComponentPanel } from '@/components/builder/ComponentPanel'
 import { Canvas } from '@/components/builder/Canvas'
 import { PropertyPanel } from '@/components/builder/PropertyPanel'
 import { CodeViewer } from '@/components/builder/CodeViewer'
+import { ActionMenu } from '@/components/builder/ActionMenu'
 import { Element, ElementType } from '@/lib/types'
 import { generateId } from '@/lib/utils'
+import { useHistory } from '@/hooks/useHistory'
 
 const STORAGE_KEY = 'pageBuilder_currentPage'
 
@@ -29,6 +31,18 @@ export default function BuilderPage() {
   const [pages, setPages] = useState<Array<{ id: string; name: string; updatedAt: number }>>([])
   const [showPageList, setShowPageList] = useState(false)
   const [creatingNewPage, setCreatingNewPage] = useState(false)
+  
+  // 历史记录管理
+  const history = useHistory<Element[]>([])
+  const isRestoringFromHistory = useRef(false) // 标记是否正在从历史记录恢复
+  
+  // 同步 elements 到历史记录（只在需要记录历史时调用）
+  const updateElementsWithHistory = useCallback((newElements: Element[]) => {
+    if (!isRestoringFromHistory.current) {
+      setElements(newElements)
+      history.push(newElements)
+    }
+  }, [history])
 
   // 递归查找元素的辅助函数
   const findElementById = (elements: Element[], id: string): Element | null => {
@@ -71,10 +85,13 @@ export default function BuilderPage() {
       const response = await fetch(`/api/pages/${id}`)
       const result = await response.json()
       if (result.success && result.data) {
+        const loadedElements = result.data.elements || []
         setPageId(result.data.id)
         setPageName(result.data.name || '未命名页面')
-        setElements(result.data.elements || [])
+        setElements(loadedElements)
         setSelectedElementId(null)
+        // 重置历史记录
+        history.reset(loadedElements)
         // 更新URL（不刷新页面）
         window.history.pushState({}, '', `/builder/page?id=${id}`)
       }
@@ -104,10 +121,13 @@ export default function BuilderPage() {
 
       const result = await response.json()
       if (result.success && result.data) {
+        const emptyElements: Element[] = []
         setPageId(result.data.id)
         setPageName(newPageName)
-        setElements([])
+        setElements(emptyElements)
         setSelectedElementId(null)
+        // 重置历史记录
+        history.reset(emptyElements)
         await loadPages()
         // 更新URL
         window.history.pushState({}, '', `/builder/page?id=${result.data.id}`)
@@ -154,9 +174,12 @@ export default function BuilderPage() {
         }
 
         // 如果都没有，创建一个新页面
+        const emptyElements: Element[] = []
         setPageId(null)
         setPageName('未命名页面')
-        setElements([])
+        setElements(emptyElements)
+        // 重置历史记录
+        history.reset(emptyElements)
       } catch (error) {
         console.error('初始化页面失败:', error)
       } finally {
@@ -166,6 +189,7 @@ export default function BuilderPage() {
 
     initPage()
   }, [searchParams])
+
 
   // 自动保存到localStorage（作为备份）
   useEffect(() => {
@@ -195,6 +219,14 @@ export default function BuilderPage() {
         label: elementData.props?.label || elementData.type,
         icon: '📦',
       })
+    } else if (event.active.data.current?.type === 'element') {
+      // 画布上元素的拖拽预览
+      const element = event.active.data.current.element as Element
+      setActiveDragComponent({
+        type: element.type,
+        label: element.props?.label || element.type,
+        icon: '📦',
+      })
     }
   }
 
@@ -216,12 +248,13 @@ export default function BuilderPage() {
 
       // 如果拖放到画布根节点
       if (over.id === 'canvas-root') {
-        setElements([...elements, newElement])
+        updateElementsWithHistory([...elements, newElement])
       } else {
         // 拖放到现有元素内
         const targetElement = findElementById(elements, over.id as string)
         if (targetElement) {
-          addElementToParent(elements, targetElement.id, newElement)
+          const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
+          updateElementsWithHistory(newElements)
         }
       }
     }
@@ -244,23 +277,95 @@ export default function BuilderPage() {
 
       // 如果拖放到画布根节点
       if (over.id === 'canvas-root') {
-        setElements([...elements, newElement])
+        updateElementsWithHistory([...elements, newElement])
       } else {
         // 拖放到现有元素内
         const targetElement = findElementById(elements, over.id as string)
         if (targetElement) {
-          addElementToParent(elements, targetElement.id, newElement)
+          const newElements = addElementToParentInternal(elements, targetElement.id, newElement)
+          updateElementsWithHistory(newElements)
         }
       }
     }
 
-    // 如果是重新排序
+    // 如果是拖拽画布上的元素
     if (active.data.current?.type === 'element') {
-      // 这里可以实现元素排序逻辑
+      const draggedElement = active.data.current.element as Element
+      const draggedElementId = draggedElement.id
+
+      // 防止将元素拖到自己或子元素中
+      const isDescendant = (parentId: string, childId: string): boolean => {
+        const parent = findElementById(elements, parentId)
+        if (!parent) return false
+        
+        const checkChildren = (el: Element): boolean => {
+          if (el.id === childId) return true
+          if (el.children) {
+            return el.children.some(checkChildren)
+          }
+          return false
+        }
+        
+        return checkChildren(parent)
+      }
+
+      if (over.id === draggedElementId || isDescendant(draggedElementId, over.id as string)) {
+        // 不能拖到自己或子元素中
+        return
+      }
+
+      // 从原位置移除元素
+      const removeElement = (els: Element[]): Element[] => {
+        return els
+          .filter(el => el.id !== draggedElementId)
+          .map(el => ({
+            ...el,
+            children: el.children ? removeElement(el.children) : undefined,
+          }))
+      }
+
+      // 如果拖放到画布根节点
+      if (over.id === 'canvas-root') {
+        const updatedElements = removeElement(elements)
+        updateElementsWithHistory([...updatedElements, draggedElement])
+        setSelectedElementId(draggedElement.id)
+        return
+      }
+
+      // 拖放到其他元素内
+      const targetElement = findElementById(elements, over.id as string)
+      if (targetElement) {
+        // 先移除元素
+        const elementsWithoutDragged = removeElement(elements)
+        
+        // 然后添加到目标元素
+        const addToTarget = (els: Element[]): Element[] => {
+          return els.map(el => {
+            if (el.id === targetElement.id) {
+              return {
+                ...el,
+                children: [...(el.children || []), draggedElement],
+              }
+            }
+            if (el.children) {
+              return {
+                ...el,
+                children: addToTarget(el.children),
+              }
+            }
+            return el
+          })
+        }
+
+        const updatedElements = addToTarget(elementsWithoutDragged)
+        updateElementsWithHistory(updatedElements)
+        setSelectedElementId(draggedElement.id)
+      }
     }
   }
 
-  const addElementToParent = (elements: Element[], parentId: string, newElement: Element) => {
+  // 内部辅助函数：添加元素到父元素（不更新历史记录）
+  const addElementToParentInternal = (elements: Element[], parentId: string, newElement: Element): Element[] => {
     const updateElement = (el: Element): Element => {
       if (el.id === parentId) {
         return {
@@ -277,7 +382,7 @@ export default function BuilderPage() {
       return el
     }
 
-    setElements(elements.map(updateElement))
+    return elements.map(updateElement)
   }
 
   const updateElement = (id: string, updates: Partial<Element>) => {
@@ -294,7 +399,8 @@ export default function BuilderPage() {
       return el
     }
 
-    setElements(elements.map(updateElementById))
+    const newElements = elements.map(updateElementById)
+    updateElementsWithHistory(newElements)
   }
 
   const deleteElement = (id: string) => {
@@ -307,11 +413,115 @@ export default function BuilderPage() {
         }))
     }
 
-    setElements(removeElement(elements))
+    const newElements = removeElement(elements)
+    updateElementsWithHistory(newElements)
     if (selectedElementId === id) {
       setSelectedElementId(null)
     }
   }
+
+  const copyElement = (element: Element) => {
+    // 深拷贝元素并生成新ID
+    const cloneElement = (el: Element): Element => {
+      const newId = generateId()
+      return {
+        ...el,
+        id: newId,
+        children: el.children ? el.children.map(cloneElement) : undefined,
+      }
+    }
+    const clonedElement = cloneElement(element)
+    
+    // 查找元素在树中的位置并插入副本
+    const insertCopy = (els: Element[]): Element[] => {
+      const result: Element[] = []
+      let found = false
+      
+      for (let i = 0; i < els.length; i++) {
+        result.push(els[i])
+        
+        if (els[i].id === element.id) {
+          // 找到元素，在同一父级下插入副本
+          result.push(clonedElement)
+          found = true
+        } else if (els[i].children) {
+          // 递归处理子元素
+          const updatedChildren = insertCopy(els[i].children!)
+          if (updatedChildren !== els[i].children) {
+            result[result.length - 1] = {
+              ...els[i],
+              children: updatedChildren,
+            }
+            found = true
+          }
+        }
+      }
+      
+      return found ? result : els
+    }
+    
+    const newElements = insertCopy(elements)
+    updateElementsWithHistory(newElements)
+    // 选中新复制的元素
+    setSelectedElementId(clonedElement.id)
+  }
+
+  // 撤销操作
+  const handleUndo = useCallback(() => {
+    if (history.canUndo) {
+      isRestoringFromHistory.current = true
+      const previousElements = history.undo()
+      if (previousElements) {
+        setElements(previousElements)
+      }
+      // 使用 setTimeout 确保状态更新完成后再重置标志
+      setTimeout(() => {
+        isRestoringFromHistory.current = false
+      }, 0)
+    }
+  }, [history])
+
+  // 重做操作
+  const handleRedo = useCallback(() => {
+    if (history.canRedo) {
+      isRestoringFromHistory.current = true
+      const nextElements = history.redo()
+      if (nextElements) {
+        setElements(nextElements)
+      }
+      // 使用 setTimeout 确保状态更新完成后再重置标志
+      setTimeout(() => {
+        isRestoringFromHistory.current = false
+      }, 0)
+    }
+  }, [history])
+
+  // 键盘快捷键支持
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果正在输入框中，不处理快捷键
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+      
+      // Ctrl+Z 或 Cmd+Z (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      }
+      // Ctrl+Y 或 Ctrl+Shift+Z 或 Cmd+Shift+Z (Mac) 重做
+      else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleUndo, handleRedo])
 
   const handleSave = async () => {
     if (elements.length === 0) {
@@ -569,13 +779,20 @@ export default function BuilderPage() {
           />
 
           {/* 中间画布 */}
-          <div className="flex-1 overflow-auto bg-gray-100 p-8">
+          <div className="flex-1 overflow-auto bg-gray-100 p-8 relative">
+            <ActionMenu
+              canUndo={history.canUndo}
+              canRedo={history.canRedo}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+            />
             <Canvas
               elements={elements}
               selectedElementId={selectedElementId}
               onSelect={setSelectedElementId}
               onUpdate={updateElement}
               onDelete={deleteElement}
+              onCopy={copyElement}
             />
           </div>
 
@@ -616,7 +833,7 @@ export default function BuilderPage() {
 }
 
 function getDefaultProps(type: Element['type']): Record<string, any> {
-  const defaults: Record<Element['type'], Record<string, any>> = {
+  const defaults: Record<string, Record<string, any>> = {
     container: {},
     text: { text: '文本' },
     button: { text: '按钮', variant: 'primary' },
@@ -628,6 +845,34 @@ function getDefaultProps(type: Element['type']): Record<string, any> {
     paragraph: { text: '段落文本' },
     list: { items: ['项目1', '项目2'], ordered: false },
     form: {},
+    // Ant Design 组件默认属性
+    'a-button': { text: 'Button', type: 'default' },
+    'a-input': { placeholder: '请输入' },
+    'a-card': { title: 'Card Title' },
+    'a-form': {},
+    'a-select': { placeholder: '请选择' },
+    'a-datepicker': {},
+    'a-radio': { label: 'Radio' },
+    'a-checkbox': { label: 'Checkbox' },
+    'a-switch': {},
+    'a-slider': {},
+    'a-rate': {},
+    'a-tag': { text: 'Tag' },
+    'a-badge': { count: 0 },
+    'a-avatar': {},
+    'a-divider': {},
+    'a-space': {},
+    'a-row': {},
+    'a-col': { span: 12 },
+    'a-layout': {},
+    'a-menu': {},
+    'a-tabs': {},
+    'a-collapse': {},
+    'a-timeline': {},
+    'a-list': {},
+    'a-empty': {},
+    'a-spin': {},
+    'a-alert': { message: 'Alert', type: 'info' },
   }
   return defaults[type] || {}
 }
