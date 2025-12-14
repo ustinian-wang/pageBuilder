@@ -9,32 +9,139 @@ interface ElementListProps {
   onSelect: (id: string | null) => void
 }
 
-const elementTypeLabels: Record<Element['type'], string> = {
-  container: '容器',
-  text: '文本',
-  button: '按钮',
-  input: '输入框',
-  image: '图片',
-  card: '卡片',
-  divider: '分割线',
-  heading: '标题',
-  paragraph: '段落',
-  list: '列表',
-  form: '表单',
+// 获取元素类型的标签
+function getElementTypeLabel(type: Element['type']): string {
+  const labels: Partial<Record<Element['type'], string>> = {
+    container: '容器',
+    text: '文本',
+    button: '按钮',
+    input: '输入框',
+    image: '图片',
+    card: '卡片',
+    divider: '分割线',
+    heading: '标题',
+    paragraph: '段落',
+    list: '列表',
+    form: '表单',
+    'a-button': 'Button',
+    'a-input': 'Input',
+    'a-card': 'Card',
+    'a-form': 'Form',
+    'a-table': 'Table',
+    'a-select': 'Select',
+    'a-datepicker': 'DatePicker',
+    'a-radio': 'Radio',
+    'a-checkbox': 'Checkbox',
+    'a-switch': 'Switch',
+    'a-slider': 'Slider',
+    'a-rate': 'Rate',
+    'a-tag': 'Tag',
+    'a-badge': 'Badge',
+    'a-avatar': 'Avatar',
+    'a-divider': 'Divider',
+    'a-space': 'Space',
+    'a-row': 'Row',
+    'a-col': 'Col',
+    'a-layout': 'Layout',
+    'a-menu': 'Menu',
+    'a-tabs': 'Tabs',
+    'a-collapse': 'Collapse',
+    'a-timeline': 'Timeline',
+    'a-list': 'List',
+    'a-empty': 'Empty',
+    'a-spin': 'Spin',
+    'a-alert': 'Alert',
+    'a-message': 'Message',
+    'a-notification': 'Notification',
+    'a-modal': 'Modal',
+    'a-drawer': 'Drawer',
+    'a-popconfirm': 'Popconfirm',
+    'a-popover': 'Popover',
+    'a-tooltip': 'Tooltip',
+    'a-dropdown': 'Dropdown',
+  }
+  return labels[type] || type
 }
 
-const elementTypeIcons: Record<Element['type'], string> = {
-  container: '📦',
-  text: '📝',
-  button: '🔘',
-  input: '📥',
-  image: '🖼️',
-  card: '🎴',
-  divider: '➖',
-  heading: '📌',
-  paragraph: '📄',
-  list: '📋',
-  form: '📋',
+// 获取元素类型的图标
+function getElementTypeIcon(type: Element['type']): string {
+  const icons: Partial<Record<Element['type'], string>> = {
+    container: '📦',
+    text: '📝',
+    button: '🔘',
+    input: '📥',
+    image: '🖼️',
+    card: '🎴',
+    divider: '➖',
+    heading: '📌',
+    paragraph: '📄',
+    list: '📋',
+    form: '📋',
+    'a-button': '🔘',
+    'a-input': '📥',
+    'a-card': '🎴',
+    'a-form': '📋',
+    'a-table': '📊',
+    'a-select': '📋',
+    'a-datepicker': '📅',
+    'a-radio': '🔘',
+    'a-checkbox': '☑️',
+    'a-switch': '🔀',
+    'a-slider': '🎚️',
+    'a-rate': '⭐',
+    'a-tag': '🏷️',
+    'a-badge': '🔖',
+    'a-avatar': '👤',
+    'a-divider': '➖',
+    'a-space': '↔️',
+    'a-row': '➡️',
+    'a-col': '⬇️',
+    'a-layout': '📐',
+    'a-menu': '📑',
+    'a-tabs': '📑',
+    'a-collapse': '📂',
+    'a-timeline': '⏱️',
+    'a-list': '📋',
+    'a-empty': '📭',
+    'a-spin': '🌀',
+    'a-alert': '⚠️',
+    'a-message': '💬',
+    'a-notification': '🔔',
+    'a-modal': '🪟',
+    'a-drawer': '📤',
+    'a-popconfirm': '❓',
+    'a-popover': '💭',
+    'a-tooltip': '💡',
+    'a-dropdown': '📋',
+  }
+  return icons[type] || '📦'
+}
+
+// 获取元素的所有子元素（包括标准 children 和特殊组件的子元素，如 a-tabs 的 props.items[].children）
+function getAllChildren(element: Element): Element[] {
+  const children: Element[] = []
+  
+  // 标准的 children
+  if (element.children && Array.isArray(element.children)) {
+    children.push(...element.children)
+  }
+  
+  // a-tabs 的 props.items[].children
+  if (element.type === 'a-tabs' && element.props?.items && Array.isArray(element.props.items)) {
+    for (const item of element.props.items) {
+      if (item.children && Array.isArray(item.children)) {
+        // 检查是否是 Element 对象数组（有 id 和 type 属性）
+        const isElementArray = item.children.every(
+          (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
+        )
+        if (isElementArray) {
+          children.push(...item.children)
+        }
+      }
+    }
+  }
+  
+  return children
 }
 
 function ElementItem({
@@ -53,18 +160,19 @@ function ElementItem({
   shouldShow?: boolean
 }) {
   const isSelected = selectedElementId === element.id
-  const hasChildren = element.children && element.children.length > 0
+  const allChildren = getAllChildren(element)
+  const hasChildren = allChildren.length > 0
 
   // 获取元素的显示名称（如果有自定义名称，优先使用）
-  const displayName = element.props?.label || element.props?.name || elementTypeLabels[element.type]
+  const displayName = element.props?.label || element.props?.name || getElementTypeLabel(element.type)
   
   // 检查是否匹配搜索
   const matchesSearch = searchQuery === '' || 
     displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    elementTypeLabels[element.type].toLowerCase().includes(searchQuery.toLowerCase())
+    getElementTypeLabel(element.type).toLowerCase().includes(searchQuery.toLowerCase())
 
   // 检查子元素是否有匹配的
-  const hasMatchingChildren = hasChildren && element.children!.some(child => 
+  const hasMatchingChildren = hasChildren && allChildren.some(child => 
     matchesElement(child, searchQuery)
   )
 
@@ -108,19 +216,19 @@ function ElementItem({
         {level > 0 && (
           <span className="text-gray-300 text-xs">└</span>
         )}
-        <span className="text-base">{elementTypeIcons[element.type]}</span>
+        <span className="text-base">{getElementTypeIcon(element.type)}</span>
         <span className="flex-1 font-medium truncate">
           {highlightText(displayName, searchQuery)}
         </span>
         {hasChildren && (
           <span className="text-xs text-gray-400 whitespace-nowrap">
-            ({element.children?.length})
+            ({allChildren.length})
           </span>
         )}
       </div>
       {hasChildren && (
         <div>
-          {element.children!.map(child => (
+          {allChildren.map(child => (
             <ElementItem
               key={child.id}
               element={child}
@@ -141,15 +249,16 @@ function ElementItem({
 function matchesElement(element: Element, query: string): boolean {
   if (!query) return true
   
-  const displayName = element.props?.label || element.props?.name || elementTypeLabels[element.type]
+  const displayName = element.props?.label || element.props?.name || getElementTypeLabel(element.type)
   const matches = displayName.toLowerCase().includes(query.toLowerCase()) ||
-    elementTypeLabels[element.type].toLowerCase().includes(query.toLowerCase())
+    getElementTypeLabel(element.type).toLowerCase().includes(query.toLowerCase())
   
   if (matches) return true
   
-  // 检查子元素
-  if (element.children && element.children.length > 0) {
-    return element.children.some(child => matchesElement(child, query))
+  // 检查子元素（包括标准 children 和特殊组件的子元素）
+  const allChildren = getAllChildren(element)
+  if (allChildren.length > 0) {
+    return allChildren.some(child => matchesElement(child, query))
   }
   
   return false
@@ -164,13 +273,15 @@ export function ElementList({ elements, selectedElementId, onSelect }: ElementLi
     let count = 0
     const countMatches = (els: Element[]) => {
       els.forEach(el => {
-        const displayName = el.props?.label || el.props?.name || elementTypeLabels[el.type]
+        const displayName = el.props?.label || el.props?.name || getElementTypeLabel(el.type)
         if (displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            elementTypeLabels[el.type].toLowerCase().includes(searchQuery.toLowerCase())) {
+            getElementTypeLabel(el.type).toLowerCase().includes(searchQuery.toLowerCase())) {
           count++
         }
-        if (el.children) {
-          countMatches(el.children)
+        // 递归检查所有子元素（包括标准 children 和特殊组件的子元素）
+        const allChildren = getAllChildren(el)
+        if (allChildren.length > 0) {
+          countMatches(allChildren)
         }
       })
     }
