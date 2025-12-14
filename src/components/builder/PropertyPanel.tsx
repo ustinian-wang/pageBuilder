@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { Element, ElementType } from '@/lib/types'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import {
@@ -335,9 +335,43 @@ function IconSelector({ value, onChange }: { value: string; onChange: (value: st
 interface PropertyPanelProps {
   element: Element | undefined
   onUpdate: (updates: Partial<Element>) => void
+  activeTab?: string // 当前激活的标签页
+  onTabChange?: (tab: string) => void // 标签页切换回调
 }
 
-export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
+export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab, onTabChange }: PropertyPanelProps) {
+  // 内部状态管理当前选中的标签页
+  const [internalActiveTab, setInternalActiveTab] = useState<string>('basic')
+  
+  // 使用外部传入的 activeTab，如果没有则使用内部状态
+  const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab
+  
+  // 处理标签页切换
+  const handleTabChange = useCallback((value: string) => {
+    if (externalActiveTab === undefined) {
+      // 如果没有外部控制，使用内部状态
+      setInternalActiveTab(value)
+    }
+    // 通知外部标签页变化
+    if (onTabChange) {
+      onTabChange(value)
+    }
+  }, [externalActiveTab, onTabChange])
+  
+  // 监听自定义事件，用于从外部切换标签页
+  useEffect(() => {
+    const handleSwitchTab = (e: CustomEvent) => {
+      const { tab, elementId } = e.detail
+      // 只有当事件是针对当前元素时才切换
+      if (!element || element.id !== elementId) return
+      handleTabChange(tab)
+    }
+    
+    window.addEventListener('switchPropertyPanelTab', handleSwitchTab as EventListener)
+    return () => {
+      window.removeEventListener('switchPropertyPanelTab', handleSwitchTab as EventListener)
+    }
+  }, [element, handleTabChange])
   if (!element) {
     return (
       <div className="w-80 bg-white border-l border-gray-200 p-4">
@@ -382,6 +416,132 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
 
   // Ant Design 组件的通用属性面板
   const renderAntdComponentPanel = () => {
+    // Table 专用样式面板（提前定义，确保作用域正确）
+    const isTable = element.type === 'a-table'
+    const tableStylePanel = isTable ? (
+      <TabsContent value="style" className="mt-0 p-4 space-y-4">
+        <div>
+          <h3 className="text-xs font-semibold text-gray-700 mb-2">表格容器样式</h3>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">类名</label>
+              <input
+                type="text"
+                value={element.className || ''}
+                onChange={(e) => onUpdate({ className: e.target.value })}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: p-4 bg-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">宽度</label>
+              <input
+                type="text"
+                value={element.style?.width || ''}
+                onChange={(e) => updateStyle('width', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 100% 或 800px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">高度</label>
+              <input
+                type="text"
+                value={element.style?.height || ''}
+                onChange={(e) => updateStyle('height', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: auto 或 400px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">内边距</label>
+              <input
+                type="text"
+                value={element.style?.padding || ''}
+                onChange={(e) => updateStyle('padding', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 16px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">外边距</label>
+              <input
+                type="text"
+                value={element.style?.margin || ''}
+                onChange={(e) => updateStyle('margin', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 16px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">背景颜色</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={element.style?.backgroundColor || '#ffffff'}
+                  onChange={(e) => updateStyle('backgroundColor', e.target.value)}
+                  className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={element.style?.backgroundColor || ''}
+                  onChange={(e) => updateStyle('backgroundColor', e.target.value)}
+                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                  placeholder="#ffffff 或 transparent"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">边框</label>
+              <input
+                type="text"
+                value={element.style?.border || ''}
+                onChange={(e) => updateStyle('border', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 1px solid #e8e8e8"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">圆角</label>
+              <input
+                type="text"
+                value={element.style?.borderRadius || ''}
+                onChange={(e) => updateStyle('borderRadius', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 4px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">阴影</label>
+              <input
+                type="text"
+                value={element.style?.boxShadow || ''}
+                onChange={(e) => updateStyle('boxShadow', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 0 2px 8px rgba(0,0,0,0.15)"
+              />
+            </div>
+          </div>
+        </div>
+        
+        {/* 表格样式配置（通过 className 或自定义样式） */}
+        <div className="pt-4 border-t border-gray-200">
+          <h3 className="text-xs font-semibold text-gray-700 mb-2">表格样式提示</h3>
+          <div className="bg-blue-50 border border-blue-200 rounded p-3">
+            <p className="text-xs text-blue-800 mb-2">
+              <strong>提示：</strong>表格的样式可以通过以下方式设置：
+            </p>
+            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+              <li>使用 <code className="bg-blue-100 px-1 rounded">className</code> 添加 Tailwind CSS 类名</li>
+              <li>使用内联样式设置容器样式（上方设置）</li>
+              <li>表格内部样式（表头、行等）需要在属性面板中配置</li>
+            </ul>
+          </div>
+        </div>
+      </TabsContent>
+    ) : null
+
+    // 通用样式面板
     const commonStylePanel = (
       <TabsContent value="style" className="mt-0 p-4 space-y-4">
         <div>
@@ -1396,6 +1556,149 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                             </label>
                           </div>
                         )}
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={column.sorter !== undefined}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = {
+                                  ...column,
+                                  sorter: e.target.checked ? true : undefined,
+                                }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-xs text-gray-600">启用排序</span>
+                          </label>
+                        </div>
+                        {column.sorter && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">排序方式</label>
+                            <select
+                              value={column.defaultSortOrder || 'ascend'}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = {
+                                  ...column,
+                                  defaultSortOrder: e.target.value === 'none' ? undefined : e.target.value as any,
+                                }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            >
+                              <option value="none">无默认排序</option>
+                              <option value="ascend">升序</option>
+                              <option value="descend">降序</option>
+                            </select>
+                          </div>
+                        )}
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={column.filters !== undefined}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = {
+                                  ...column,
+                                  filters: e.target.checked ? [
+                                    { text: '选项1', value: 'option1' },
+                                    { text: '选项2', value: 'option2' },
+                                  ] : undefined,
+                                }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-xs text-gray-600">启用筛选</span>
+                          </label>
+                        </div>
+                        {column.filters && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">筛选选项（JSON格式）</label>
+                            <textarea
+                              value={JSON.stringify(column.filters || [], null, 2)}
+                              onChange={(e) => {
+                                try {
+                                  const filters = JSON.parse(e.target.value)
+                                  const newColumns = [...tableColumns]
+                                  newColumns[index] = {
+                                    ...column,
+                                    filters,
+                                  }
+                                  updateProps('columns', newColumns)
+                                } catch (error) {
+                                  // JSON格式错误，暂时不更新
+                                }
+                              }}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded font-mono"
+                              rows={3}
+                              placeholder='[{"text": "选项1", "value": "option1"}]'
+                            />
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              格式：{`[{"text": "显示文本", "value": "值"}]`}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={column.align === 'center' || column.align === 'right'}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = {
+                                  ...column,
+                                  align: e.target.checked ? 'center' : undefined,
+                                }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-xs text-gray-600">居中对齐</span>
+                          </label>
+                        </div>
+                        {column.align === 'center' && (
+                          <div>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={column.align === 'right'}
+                                onChange={(e) => {
+                                  const newColumns = [...tableColumns]
+                                  newColumns[index] = {
+                                    ...column,
+                                    align: e.target.checked ? 'right' : 'center',
+                                  }
+                                  updateProps('columns', newColumns)
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-xs text-gray-600">改为右对齐</span>
+                            </label>
+                          </div>
+                        )}
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={column.ellipsis === true}
+                              onChange={(e) => {
+                                const newColumns = [...tableColumns]
+                                newColumns[index] = {
+                                  ...column,
+                                  ellipsis: e.target.checked ? true : undefined,
+                                }
+                                updateProps('columns', newColumns)
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-xs text-gray-600">文本省略（超出显示...）</span>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1495,6 +1798,30 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">每页条数选项</label>
+                    <input
+                      type="text"
+                      value={Array.isArray(element.props?.pagination?.pageSizeOptions) 
+                        ? element.props.pagination.pageSizeOptions.join(', ')
+                        : '10, 20, 50, 100'}
+                      onChange={(e) => {
+                        const pageSizeOptions = e.target.value
+                          .split(',')
+                          .map(s => s.trim())
+                          .filter(s => s)
+                        updateProps('pagination', {
+                          ...(element.props?.pagination || {}),
+                          pageSizeOptions,
+                        })
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      placeholder="10, 20, 50, 100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      用逗号分隔，例如: 10, 20, 50, 100
+                    </p>
+                  </div>
+                  <div>
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -1526,20 +1853,228 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                       <span className="text-xs font-medium text-gray-700">显示快速跳转</span>
                     </label>
                   </div>
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={element.props?.pagination?.showTotal !== undefined}
+                        onChange={(e) => {
+                          updateProps('pagination', {
+                            ...(element.props?.pagination || {}),
+                            showTotal: e.target.checked ? (total: number) => `共 ${total} 条` : undefined,
+                          })
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-xs font-medium text-gray-700">显示总数</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">分页位置</label>
+                    <select
+                      value={element.props?.pagination?.position?.[0] || 'bottomRight'}
+                      onChange={(e) => {
+                        updateProps('pagination', {
+                          ...(element.props?.pagination || {}),
+                          position: [e.target.value as any],
+                        })
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    >
+                      <option value="topLeft">顶部左侧</option>
+                      <option value="topCenter">顶部居中</option>
+                      <option value="topRight">顶部右侧</option>
+                      <option value="bottomLeft">底部左侧</option>
+                      <option value="bottomCenter">底部居中</option>
+                      <option value="bottomRight">底部右侧</option>
+                    </select>
+                  </div>
                 </>
               )}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">行键字段</label>
-                <input
-                  type="text"
-                  value={element.props?.rowKey || 'key'}
-                  onChange={(e) => updateProps('rowKey', e.target.value || 'key')}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                  placeholder="rowKey"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  用于标识每一行的唯一字段名，默认为 "key"
-                </p>
+              
+              {/* 滚动设置 */}
+              <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-xs font-semibold text-gray-700 mb-2">滚动设置</h3>
+                <div className="space-y-2">
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={element.props?.scroll?.x !== undefined}
+                        onChange={(e) => {
+                          const scroll = { ...(element.props?.scroll || {}) }
+                          if (e.target.checked) {
+                            scroll.x = scroll.x || 'max-content'
+                          } else {
+                            delete scroll.x
+                          }
+                          updateProps('scroll', Object.keys(scroll).length > 0 ? scroll : undefined)
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-xs font-medium text-gray-700">启用横向滚动</span>
+                    </label>
+                  </div>
+                  {element.props?.scroll?.x !== undefined && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">横向滚动宽度</label>
+                      <input
+                        type="text"
+                        value={typeof element.props.scroll.x === 'string' ? element.props.scroll.x : String(element.props.scroll.x || 'max-content')}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const scroll = { ...(element.props?.scroll || {}) }
+                          // 尝试转换为数字，如果失败则使用字符串
+                          scroll.x = /^\d+$/.test(value) ? Number(value) : value || 'max-content'
+                          updateProps('scroll', scroll)
+                        }}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        placeholder="例如: 800 或 max-content"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        可以是数字（像素）或 "max-content"
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={element.props?.scroll?.y !== undefined}
+                        onChange={(e) => {
+                          const scroll = { ...(element.props?.scroll || {}) }
+                          if (e.target.checked) {
+                            scroll.y = scroll.y || 240
+                          } else {
+                            delete scroll.y
+                          }
+                          updateProps('scroll', Object.keys(scroll).length > 0 ? scroll : undefined)
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-xs font-medium text-gray-700">启用纵向滚动</span>
+                    </label>
+                  </div>
+                  {element.props?.scroll?.y !== undefined && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">纵向滚动高度</label>
+                      <input
+                        type="text"
+                        value={typeof element.props.scroll.y === 'string' ? element.props.scroll.y : String(element.props.scroll.y || 240)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const scroll = { ...(element.props?.scroll || {}) }
+                          // 尝试转换为数字，如果失败则使用字符串
+                          scroll.y = /^\d+$/.test(value) ? Number(value) : value || 240
+                          updateProps('scroll', scroll)
+                        }}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        placeholder="例如: 240"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        表格内容区域的高度（像素）
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* 其他设置 */}
+              <div className="pt-4 border-t border-gray-200 space-y-2">
+                <h3 className="text-xs font-semibold text-gray-700 mb-2">其他设置</h3>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">行键字段</label>
+                  <input
+                    type="text"
+                    value={element.props?.rowKey || 'key'}
+                    onChange={(e) => updateProps('rowKey', e.target.value || 'key')}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    placeholder="rowKey"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    用于标识每一行的唯一字段名，默认为 "key"
+                  </p>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={element.props?.showHeader !== false}
+                      onChange={(e) => updateProps('showHeader', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs font-medium text-gray-700">显示表头</span>
+                  </label>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={element.props?.sticky === true}
+                      onChange={(e) => updateProps('sticky', e.target.checked || undefined)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs font-medium text-gray-700">粘性表头</span>
+                  </label>
+                  <p className="text-xs text-gray-500 ml-6 mt-0.5">
+                    表头在滚动时保持可见
+                  </p>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={element.props?.rowSelection !== undefined}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          updateProps('rowSelection', {
+                            type: 'checkbox',
+                          })
+                        } else {
+                          updateProps('rowSelection', undefined)
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs font-medium text-gray-700">启用行选择</span>
+                  </label>
+                </div>
+                {element.props?.rowSelection !== undefined && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">选择类型</label>
+                      <select
+                        value={element.props?.rowSelection?.type || 'checkbox'}
+                        onChange={(e) => {
+                          updateProps('rowSelection', {
+                            ...(element.props?.rowSelection || {}),
+                            type: e.target.value as 'checkbox' | 'radio',
+                          })
+                        }}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      >
+                        <option value="checkbox">多选 (checkbox)</option>
+                        <option value="radio">单选 (radio)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={element.props?.rowSelection?.checkStrictly === true}
+                          onChange={(e) => {
+                            updateProps('rowSelection', {
+                              ...(element.props?.rowSelection || {}),
+                              checkStrictly: e.target.checked,
+                            })
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-xs font-medium text-gray-700">父子节点独立选择</span>
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )
@@ -1558,7 +2093,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
         <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-sm font-semibold text-gray-700">属性面板</h2>
         </div>
-        <Tabs defaultValue="basic" className="flex flex-col flex-1 min-h-0">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col flex-1 min-h-0">
           <div className="px-4 pt-4 border-b border-gray-200 flex-shrink-0">
             <TabsList className="w-full">
               <TabsTrigger value="basic" className="flex-1">
@@ -1571,7 +2106,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
             {renderBasicPanel()}
-            {commonStylePanel}
+            {isTable ? tableStylePanel : commonStylePanel}
           </div>
         </Tabs>
       </div>
@@ -1585,7 +2120,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
         <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-sm font-semibold text-gray-700">属性面板</h2>
         </div>
-        <Tabs defaultValue="basic" className="flex flex-col flex-1 min-h-0">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col flex-1 min-h-0">
           <div className="px-4 pt-4 border-b border-gray-200 flex-shrink-0">
             <TabsList className="w-full">
               <TabsTrigger value="basic" className="flex-1">

@@ -35,7 +35,7 @@ export function Canvas({ elements, selectedElementId, onSelect, onUpdate, onDele
     <div
       ref={setNodeRef}
       className={`
-        h-full bg-white rounded-lg shadow-lg p-8
+        h-full bg-white rounded-lg shadow-lg p-2
         ${isOver ? 'ring-2 ring-blue-400 ring-offset-2' : ''}
       `}
       style={{ minHeight: '100%', boxSizing: 'border-box' }}

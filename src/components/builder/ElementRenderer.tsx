@@ -398,12 +398,33 @@ const TabContentRenderer = ({
           className="relative min-h-[60px] p-2"
           style={{ minHeight: '60px', position: 'relative', zIndex: 1 }}
           onClick={(e) => {
-            // 点击 tab 内容区域时，不选中 tabs 本身
-            e.stopPropagation()
+            // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
+            // 如果点击的是子元素（有 data-element-id），允许事件继续传播
+            const target = e.target as HTMLElement
+            const clickedElement = target.closest('[data-element-id]')
+            // 如果点击的不是子元素，或者是容器本身，阻止冒泡到 tabs
+            if (!clickedElement || target === e.currentTarget) {
+              e.stopPropagation()
+            }
           }}
           onMouseDown={(e) => {
-            // 阻止事件冒泡，确保拖拽区域可以正常工作
-            e.stopPropagation()
+            // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
+            const target = e.target as HTMLElement
+            const clickedElement = target.closest('[data-element-id]')
+            if (!clickedElement || target === e.currentTarget) {
+              e.stopPropagation()
+            }
+          }}
+          onContextMenu={(e) => {
+            // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
+            // 如果点击的是子元素（有 data-element-id），允许事件继续传播
+            const target = e.target as HTMLElement
+            const clickedElement = target.closest('[data-element-id]')
+            // 如果点击的不是子元素，或者是容器本身，阻止冒泡到 tabs
+            if (!clickedElement || target === e.currentTarget) {
+              e.stopPropagation()
+            }
+            // 注意：不要在这里调用 preventDefault，让子元素自己处理
           }}
         >
           {tabItem.children.map((child: Element) => (
@@ -530,12 +551,33 @@ const TabContentRenderer = ({
         pointerEvents: 'auto',
       }}
       onClick={(e) => {
-        // 点击 tab 内容区域时，不选中 tabs 本身
-        e.stopPropagation()
+        // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
+        // 如果点击的是子元素（有 data-element-id），允许事件继续传播
+        const target = e.target as HTMLElement
+        const clickedElement = target.closest('[data-element-id]')
+        // 如果点击的不是子元素，或者是容器本身，阻止冒泡到 tabs
+        if (!clickedElement || target === e.currentTarget) {
+          e.stopPropagation()
+        }
       }}
       onMouseDown={(e) => {
-        // 阻止事件冒泡，确保拖拽区域可以正常工作
-        e.stopPropagation()
+        // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
+        const target = e.target as HTMLElement
+        const clickedElement = target.closest('[data-element-id]')
+        if (!clickedElement || target === e.currentTarget) {
+          e.stopPropagation()
+        }
+      }}
+      onContextMenu={(e) => {
+        // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
+        // 如果点击的是子元素（有 data-element-id），允许事件继续传播
+        const target = e.target as HTMLElement
+        const clickedElement = target.closest('[data-element-id]')
+        // 如果点击的不是子元素，或者是容器本身，阻止冒泡到 tabs
+        if (!clickedElement || target === e.currentTarget) {
+          e.stopPropagation()
+        }
+        // 注意：不要在这里调用 preventDefault，让子元素自己处理
       }}
     >
       {/* 如果有 Element 数组，渲染子元素 */}
@@ -965,6 +1007,16 @@ export function ElementRenderer({
   }
 
   const handleStyleMenuClick = () => {
+    console.log('handleStyleMenuClick', element.id, element);
+    // 触发自定义事件，通知属性面板切换到样式标签页
+    const switchTabEvent = new CustomEvent('switchPropertyPanelTab', {
+      detail: {
+        elementId: element.id,
+        tab: 'style'
+      }
+    })
+    window.dispatchEvent(switchTabEvent)
+    
     // 滚动到属性面板
     const propertyPanel = document.querySelector('[data-property-panel]')
     if (propertyPanel) {
@@ -1721,7 +1773,77 @@ export function ElementRenderer({
       }
       
       content = (
-        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+        <div 
+          ref={setNodeRef} 
+          onClickCapture={(e) => {
+            // 使用捕获阶段确保能捕获到 Table 内部的点击事件
+            // 即使 Table 内部阻止了冒泡，我们也能在捕获阶段处理
+            const target = e.target as HTMLElement
+            const currentTarget = e.currentTarget as HTMLElement
+            // 检查点击的是 table 容器或其子元素（包括 Table 组件内部的所有元素）
+            // 只要点击发生在当前容器内，就处理事件
+            if (currentTarget.contains(target) || target === currentTarget) {
+              console.log('[Table] onClickCapture triggered', {
+                elementId: element.id,
+                target: target.tagName,
+                willCallOnSelect: true
+              })
+              e.stopPropagation() // 阻止冒泡到 tabs
+              // 直接调用 onSelect，确保元素被选中
+              onSelect(element.id)
+              // 也调用 handleClick 来处理其他逻辑（如关闭右键菜单）
+              handleClick(e)
+            }
+          }}
+          onClick={(e) => {
+            // 备用处理：如果捕获阶段没有捕获到，在冒泡阶段处理
+            const target = e.target as HTMLElement
+            const currentTarget = e.currentTarget as HTMLElement
+            if (currentTarget.contains(target) || target === currentTarget) {
+              console.log('[Table] onClick (bubble) triggered', {
+                elementId: element.id,
+                target: target.tagName
+              })
+              e.stopPropagation()
+              onSelect(element.id)
+              handleClick(e)
+            }
+          }}
+          onContextMenuCapture={(e) => {
+            // 使用捕获阶段确保能捕获到 Table 内部的右键菜单事件
+            const target = e.target as HTMLElement
+            const currentTarget = e.currentTarget as HTMLElement
+            // 只要右键点击发生在当前容器内，就处理事件
+            if (currentTarget.contains(target) || target === currentTarget) {
+              console.log('[Table] onContextMenuCapture triggered', {
+                elementId: element.id,
+                target: target.tagName,
+                currentTarget: currentTarget.getAttribute('data-element-id')
+              })
+              e.stopPropagation() // 阻止冒泡到 tabs
+              e.preventDefault() // 阻止默认右键菜单
+              // 直接调用 handleContextMenu，因为它内部已经有 preventDefault
+              handleContextMenu(e)
+            }
+          }}
+          onContextMenu={(e) => {
+            // 备用处理：如果捕获阶段没有捕获到，在冒泡阶段处理
+            const target = e.target as HTMLElement
+            const currentTarget = e.currentTarget as HTMLElement
+            if (currentTarget.contains(target) || target === currentTarget) {
+              console.log('[Table] onContextMenu (bubble) triggered', {
+                elementId: element.id,
+                target: target.tagName
+              })
+              e.stopPropagation()
+              e.preventDefault()
+              handleContextMenu(e)
+            }
+          }}
+          style={style} 
+          className={element.className}
+          data-element-id={element.id}
+        >
           <Table {...tableProps} />
         </div>
       )
