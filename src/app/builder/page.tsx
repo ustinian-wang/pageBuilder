@@ -1467,6 +1467,7 @@ export default function BuilderPage() {
             elements={elements}
             selectedElementId={selectedElementId}
             onSelect={setSelectedElementId}
+            onDelete={deleteElement}
           />
 
           {/* 中间画布 */}

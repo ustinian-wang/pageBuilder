@@ -1250,38 +1250,39 @@ export function ElementRenderer({
     }
   }
 
-  // 容器自动填充布局（如果启用）
-  if (element.type === 'container' && element.props?.autoFill) {
-    baseStyle.display = 'flex'
-    baseStyle.width = baseStyle.width || '100%'
-    // 确保容器有高度，这样子元素才能使用 height: 100% 来填充
-    // 如果父容器启用了autoFill，父容器应该有高度，所以这里也设置height: 100%
-    baseStyle.height = baseStyle.height || '100%'
+  // 容器 Flex 布局设置（保留向后兼容，支持通过 props 设置，但优先使用 style）
+  if (element.type === 'container') {
+    // 如果启用了 autoFill（向后兼容），自动设置 display: flex 和默认值
+    if (element.props?.autoFill && !baseStyle.display) {
+      baseStyle.display = 'flex'
+      baseStyle.width = baseStyle.width || '100%'
+      // 确保容器有高度，这样子元素才能使用 height: 100% 来填充
+      baseStyle.height = baseStyle.height || '100%'
+    }
     
-    if (element.props.flexDirection) {
+    // 应用 flex 相关属性（优先使用 style，如果没有则使用 props 作为后备）
+    // 优先级：style 中的值 > props 中的值
+    if (!baseStyle.flexDirection && element.props?.flexDirection) {
       baseStyle.flexDirection = element.props.flexDirection as 'row' | 'column'
     }
     
-    if (element.props.justifyContent) {
+    if (!baseStyle.justifyContent && element.props?.justifyContent) {
       baseStyle.justifyContent = element.props.justifyContent as any
     }
     
-    if (element.props.alignItems) {
+    if (!baseStyle.alignItems && element.props?.alignItems) {
       baseStyle.alignItems = element.props.alignItems as any
     }
     
-    if (element.props.flexWrap) {
+    if (!baseStyle.flexWrap && element.props?.flexWrap) {
       baseStyle.flexWrap = element.props.flexWrap as 'nowrap' | 'wrap' | 'wrap-reverse'
     }
     
     // 设置 gap（如果指定了）
-    if (element.props.gap !== undefined && element.props.gap !== null && element.props.gap !== '') {
+    if (!baseStyle.gap && element.props?.gap !== undefined && element.props.gap !== null && element.props.gap !== '') {
       // 如果gap是纯数字，添加px单位；否则使用原始值
       const gapValue = String(element.props.gap)
       baseStyle.gap = /^\d+$/.test(gapValue) ? `${gapValue}px` : gapValue
-    } else if (element.children && element.children.length > 0) {
-      // 如果没有指定gap但有子元素，默认设置为0px（这样可以清除浏览器默认样式）
-      baseStyle.gap = '0px'
     }
   }
 
@@ -1393,14 +1394,10 @@ export function ElementRenderer({
 
   switch (element.type) {
     case 'container':
+      // Container 直接渲染 children，不需要额外的 div 包裹
+      // 样式会应用到外层的 relative group div 上
       content = (
-        <div
-          ref={setNodeRef}
-          style={style}
-          className={element.className}
-          onClick={handleClick}
-          onContextMenu={handleContextMenu}
-        >
+        <>
           {element.children?.map(child => (
             <ElementRenderer
               key={child.id}
@@ -1423,7 +1420,7 @@ export function ElementRenderer({
               <ResizeHandle position="bottom-right" onResize={handleResize} />
             </>
           )}
-        </div>
+        </>
       )
       break
 
@@ -2198,13 +2195,25 @@ export function ElementRenderer({
       )
   }
 
+  // 对于 container 类型，样式直接应用到外层的 relative group div
+  const isContainer = element.type === 'container'
+  const wrapperClassName = isContainer 
+    ? `relative group ${element.className || ''}`.trim()
+    : 'relative group'
+  const wrapperStyle = isContainer ? style : undefined
+  const wrapperRef = isContainer ? setNodeRef : undefined
+  const wrapperOnClick = isContainer ? handleClick : undefined
+
   return (
     <>
       <div 
-        className="relative group" 
+        ref={wrapperRef}
+        className={wrapperClassName}
+        style={wrapperStyle}
         data-element-id={element.id}
         onContextMenu={handleContextMenu}
         onMouseDown={handleMouseDown}
+        onClick={wrapperOnClick}
       >
         {content}
         {/* 拖拽手柄 - 悬停或选中时显示 */}

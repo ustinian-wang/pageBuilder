@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Element } from '@/lib/types'
 
 interface ElementListProps {
   elements: Element[]
   selectedElementId: string | null
   onSelect: (id: string | null) => void
+  onDelete?: (id: string) => void
 }
 
 // 获取元素类型的标签
@@ -148,6 +149,7 @@ function ElementItem({
   element,
   selectedElementId,
   onSelect,
+  onDelete,
   level = 0,
   searchQuery = '',
   shouldShow = true,
@@ -155,13 +157,51 @@ function ElementItem({
   element: Element
   selectedElementId: string | null
   onSelect: (id: string | null) => void
+  onDelete?: (id: string) => void
   level?: number
   searchQuery?: string
   shouldShow?: boolean
 }) {
+  const [showContextMenu, setShowContextMenu] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 })
+  const menuRef = useRef<HTMLDivElement>(null)
+  const itemRef = useRef<HTMLDivElement>(null)
+
   const isSelected = selectedElementId === element.id
   const allChildren = getAllChildren(element)
   const hasChildren = allChildren.length > 0
+
+  // 处理右键菜单
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setMenuPosition({ x: e.clientX, y: e.clientY })
+    setShowContextMenu(true)
+  }
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowContextMenu(false)
+      }
+    }
+
+    if (showContextMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showContextMenu])
+
+  // 处理删除
+  const handleDelete = () => {
+    if (onDelete && window.confirm(`确定要删除 "${element.props?.label || element.props?.name || getElementTypeLabel(element.type)}" 吗？`)) {
+      onDelete(element.id)
+      setShowContextMenu(false)
+    }
+  }
 
   // 获取元素的显示名称（如果有自定义名称，优先使用）
   const displayName = element.props?.label || element.props?.name || getElementTypeLabel(element.type)
@@ -204,7 +244,9 @@ function ElementItem({
   return (
     <div>
       <div
+        ref={itemRef}
         onClick={() => onSelect(element.id)}
+        onContextMenu={handleContextMenu}
         className={`
           flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm
           transition-colors
@@ -234,11 +276,31 @@ function ElementItem({
               element={child}
               selectedElementId={selectedElementId}
               onSelect={onSelect}
+              onDelete={onDelete}
               level={level + 1}
               searchQuery={searchQuery}
               shouldShow={true}
             />
           ))}
+        </div>
+      )}
+      {/* 右键菜单 */}
+      {showContextMenu && onDelete && (
+        <div
+          ref={menuRef}
+          className="fixed bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1 min-w-[120px]"
+          style={{
+            left: `${menuPosition.x}px`,
+            top: `${menuPosition.y}px`,
+          }}
+        >
+          <button
+            onClick={handleDelete}
+            className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+          >
+            <span>🗑️</span>
+            <span>删除</span>
+          </button>
         </div>
       )}
     </div>
@@ -264,7 +326,7 @@ function matchesElement(element: Element, query: string): boolean {
   return false
 }
 
-export function ElementList({ elements, selectedElementId, onSelect }: ElementListProps) {
+export function ElementList({ elements, selectedElementId, onSelect, onDelete }: ElementListProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
   // 计算匹配的元素数量（用于显示提示）
@@ -337,6 +399,7 @@ export function ElementList({ elements, selectedElementId, onSelect }: ElementLi
             element={element}
             selectedElementId={selectedElementId}
             onSelect={onSelect}
+            onDelete={onDelete}
             searchQuery={searchQuery}
             shouldShow={true}
           />

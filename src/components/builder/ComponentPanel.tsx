@@ -300,9 +300,10 @@ interface ComponentPanelProps {
   elements: Element[]
   selectedElementId: string | null
   onSelect: (id: string | null) => void
+  onDelete?: (id: string) => void
 }
 
-export function ComponentPanel({ elements, selectedElementId, onSelect }: ComponentPanelProps) {
+export function ComponentPanel({ elements, selectedElementId, onSelect, onDelete }: ComponentPanelProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('components')
   const [customComponents, setCustomComponents] = useState<ComponentDefinition[]>([])
@@ -562,6 +563,7 @@ export function ComponentPanel({ elements, selectedElementId, onSelect }: Compon
                   elements={elements}
                   selectedElementId={selectedElementId}
                   onSelect={onSelect}
+                  onDelete={onDelete}
                 />
               </div>
             </TabsContent>
