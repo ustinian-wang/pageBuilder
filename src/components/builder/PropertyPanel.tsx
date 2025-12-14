@@ -586,6 +586,166 @@ export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab,
                 placeholder="例如: 16px 或 16px 8px"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">背景颜色</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={element.style?.backgroundColor || '#ffffff'}
+                  onChange={(e) => updateStyle('backgroundColor', e.target.value)}
+                  className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={element.style?.backgroundColor || ''}
+                  onChange={(e) => updateStyle('backgroundColor', e.target.value)}
+                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                  placeholder="#ffffff 或 transparent"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">文字颜色</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={element.style?.color || '#000000'}
+                  onChange={(e) => updateStyle('color', e.target.value)}
+                  className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={element.style?.color || ''}
+                  onChange={(e) => updateStyle('color', e.target.value)}
+                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                  placeholder="#000000"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">边框</label>
+              <input
+                type="text"
+                value={element.style?.border || ''}
+                onChange={(e) => updateStyle('border', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 1px solid #ccc"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">圆角</label>
+              <input
+                type="text"
+                value={element.style?.borderRadius || ''}
+                onChange={(e) => updateStyle('borderRadius', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 8px 或 50%"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Flex 布局设置 */}
+        <div className="pt-4 border-t border-gray-200">
+          <h3 className="text-xs font-semibold text-gray-700 mb-2">Flex 布局</h3>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Display</label>
+              <select
+                value={element.style?.display || ''}
+                onChange={(e) => updateStyle('display', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+              >
+                <option value="">默认</option>
+                <option value="flex">flex</option>
+                <option value="inline-flex">inline-flex</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">方向 (flex-direction)</label>
+              <select
+                value={element.style?.flexDirection || ''}
+                onChange={(e) => updateStyle('flexDirection', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+              >
+                <option value="">默认</option>
+                <option value="row">row (横向)</option>
+                <option value="column">column (纵向)</option>
+                <option value="row-reverse">row-reverse (横向反向)</option>
+                <option value="column-reverse">column-reverse (纵向反向)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">换行 (flex-wrap)</label>
+              <select
+                value={element.style?.flexWrap || ''}
+                onChange={(e) => updateStyle('flexWrap', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+              >
+                <option value="">默认</option>
+                <option value="nowrap">nowrap (不换行)</option>
+                <option value="wrap">wrap (换行)</option>
+                <option value="wrap-reverse">wrap-reverse (反向换行)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">主轴对齐 (justify-content)</label>
+              <select
+                value={element.style?.justifyContent || ''}
+                onChange={(e) => updateStyle('justifyContent', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+              >
+                <option value="">默认</option>
+                <option value="flex-start">flex-start (起始)</option>
+                <option value="flex-end">flex-end (末尾)</option>
+                <option value="center">center (居中)</option>
+                <option value="space-between">space-between (两端对齐)</option>
+                <option value="space-around">space-around (环绕)</option>
+                <option value="space-evenly">space-evenly (均匀分布)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">交叉轴对齐 (align-items)</label>
+              <select
+                value={element.style?.alignItems || ''}
+                onChange={(e) => updateStyle('alignItems', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+              >
+                <option value="">默认</option>
+                <option value="flex-start">flex-start (起始)</option>
+                <option value="flex-end">flex-end (末尾)</option>
+                <option value="center">center (居中)</option>
+                <option value="baseline">baseline (基线)</option>
+                <option value="stretch">stretch (拉伸)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">多行对齐 (align-content)</label>
+              <select
+                value={element.style?.alignContent || ''}
+                onChange={(e) => updateStyle('alignContent', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+              >
+                <option value="">默认</option>
+                <option value="flex-start">flex-start (起始)</option>
+                <option value="flex-end">flex-end (末尾)</option>
+                <option value="center">center (居中)</option>
+                <option value="space-between">space-between (两端对齐)</option>
+                <option value="space-around">space-around (环绕)</option>
+                <option value="stretch">stretch (拉伸)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">间距 (gap)</label>
+              <input
+                type="text"
+                value={element.style?.gap || ''}
+                onChange={(e) => updateStyle('gap', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="例如: 8px 或 16px 8px"
+              />
+              <p className="text-xs text-gray-500 mt-0.5">设置 flex 子元素之间的间距</p>
+            </div>
           </div>
         </div>
       </div>

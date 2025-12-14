@@ -599,13 +599,52 @@ export default function BuilderPage() {
         }
         return { ...el, ...updates }
       }
+      
+      // 更新子元素
+      let updatedEl = el
       if (el.children) {
-        return {
-          ...el,
+        updatedEl = {
+          ...updatedEl,
           children: el.children.map(updateElementById),
         }
       }
-      return el
+      
+      // 处理 a-tabs 的 props.items 中的 children
+      if (el.type === 'a-tabs' && el.props?.items && Array.isArray(el.props.items)) {
+        const updatedItems = el.props.items.map((item: any) => {
+          if (item.children && Array.isArray(item.children)) {
+            const updatedChildren = item.children.map((child: Element) => updateElementById(child))
+            // 检查是否有子元素被更新（通过比较ID或对象引用）
+            const hasUpdate = updatedChildren.some((child: Element, index: number) => 
+              child.id === id || child !== item.children[index]
+            )
+            if (hasUpdate) {
+              return {
+                ...item,
+                children: updatedChildren,
+              }
+            }
+          }
+          return item
+        })
+        
+        // 检查 items 是否有变化（通过比较引用）
+        const itemsChanged = updatedItems.some((item: any, index: number) => 
+          item !== el.props.items[index]
+        )
+        
+        if (itemsChanged) {
+          updatedEl = {
+            ...updatedEl,
+            props: {
+              ...updatedEl.props,
+              items: updatedItems,
+            },
+          }
+        }
+      }
+      
+      return updatedEl
     }
 
     const newElements = elements.map(updateElementById)
