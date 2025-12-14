@@ -501,17 +501,6 @@ const TabContentRenderer = ({
             </div>
           )}
           {/* 添加组件按钮（当有内容时也显示） */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowComponentModal(true)
-            }}
-            className="absolute top-2 right-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs flex items-center gap-1 z-10"
-            title="添加组件"
-          >
-            {React.createElement(PlusOutlined, { className: 'text-xs' })}
-            添加
-          </button>
         </div>
       )
     }
@@ -835,6 +824,114 @@ export function ElementRenderer({
   const [saving, setSaving] = useState(false)
   const [checkingName, setCheckingName] = useState(false)
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
+  
+  // 组件选择弹窗状态（用于容器组件）
+  const [showComponentModal, setShowComponentModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [customComponents, setCustomComponents] = useState<Array<{ type: string; label: string; icon: string; description?: string; elementData?: Element; moduleId?: string }>>([])
+  
+  // 加载自定义模块
+  useEffect(() => {
+    const loadCustomModules = async () => {
+      try {
+        const response = await fetch('/api/modules')
+        const result = await response.json()
+        if (result.success && result.data) {
+          const modules = result.data.map((m: any) => ({
+            type: m.name,
+            label: m.label,
+            icon: m.icon || '📦',
+            description: m.description,
+            elementData: m.element,
+            moduleId: m.id,
+          }))
+          setCustomComponents(modules)
+        }
+      } catch (error) {
+        console.error('加载自定义模块失败:', error)
+      }
+    }
+    loadCustomModules()
+    
+    // 监听自定义模块保存事件
+    const handleModuleSaved = () => {
+      loadCustomModules()
+    }
+    window.addEventListener('customModuleSaved', handleModuleSaved)
+    return () => {
+      window.removeEventListener('customModuleSaved', handleModuleSaved)
+    }
+  }, [])
+  
+  // 过滤组件（根据搜索关键词）
+  const filteredSystemComponents = useMemo(() => {
+    if (!searchQuery) return systemComponents
+    const query = searchQuery.toLowerCase()
+    return systemComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery])
+  
+  const filteredAntdComponents = useMemo(() => {
+    if (!searchQuery) return antdComponents
+    const query = searchQuery.toLowerCase()
+    return antdComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery])
+  
+  const filteredCustomComponents = useMemo(() => {
+    if (!searchQuery) return customComponents
+    const query = searchQuery.toLowerCase()
+    return customComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery, customComponents])
+  
+  const totalMatchCount = filteredSystemComponents.length + filteredAntdComponents.length + filteredCustomComponents.length
+  
+  // 添加组件到容器
+  const handleAddComponentToContainer = (componentType: ElementType | string, elementData?: Element, moduleId?: string) => {
+    let newElement: Element
+    
+    if (elementData && moduleId) {
+      // 自定义模块：深拷贝并生成新ID
+      const cloneElement = (el: Element): Element => {
+        const newId = generateId()
+        return {
+          ...el,
+          id: newId,
+          moduleId: moduleId,
+          children: el.children ? el.children.map(cloneElement) : undefined,
+        }
+      }
+      newElement = cloneElement(elementData)
+    } else {
+      // 系统组件
+      newElement = {
+        id: generateId(),
+        type: componentType as ElementType,
+        props: getDefaultProps(componentType as ElementType),
+      }
+    }
+    
+    // 更新容器的 children
+    onUpdate(element.id, {
+      children: [...(element.children || []), newElement],
+    })
+    
+    setShowComponentModal(false)
+    setSearchQuery('')
+  }
 
   const handleClick = (e: React.MouseEvent) => {
     // 如果刚刚拖拽过，不触发点击选择
@@ -1254,12 +1351,6 @@ export function ElementRenderer({
               <ResizeHandle position="bottom" onResize={handleResize} />
               <ResizeHandle position="bottom-right" onResize={handleResize} />
             </>
-          )}
-          {/* 空容器的提示文字（仅在编辑模式显示） */}
-          {(!element.children || element.children.length === 0) && !isSelected && (
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none z-0">
-              空容器
-            </div>
           )}
         </div>
       )
@@ -1995,6 +2086,22 @@ export function ElementRenderer({
               </svg>
               复制
             </button>
+            {/* 容器组件显示添加组件选项 */}
+            {element.type === 'container' && (
+              <>
+                <div className="border-t border-gray-200 my-1"></div>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                  onClick={() => {
+                    setContextMenu(null)
+                    setShowComponentModal(true)
+                  }}
+                >
+                  {React.createElement(PlusOutlined, { className: 'h-4 w-4' })}
+                  添加组件
+                </button>
+              </>
+            )}
             <div className="border-t border-gray-200 my-1"></div>
             {/* 如果元素来自自定义模块，显示保存菜单 */}
             {element.moduleId && (
@@ -2160,6 +2267,135 @@ export function ElementRenderer({
             </div>
           </div>
         </>
+      )}
+      
+      {/* 组件选择对话框（用于容器组件） */}
+      {element.type === 'container' && (
+        <Modal
+          title="选择组件"
+          open={showComponentModal}
+          onCancel={() => {
+            setShowComponentModal(false)
+            setSearchQuery('')
+          }}
+          footer={null}
+          width={800}
+        >
+          <div className="flex flex-col max-h-[70vh]">
+            {/* 搜索框 */}
+            <div className="mb-4 flex-shrink-0">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="搜索组件..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+                    aria-label="清除搜索"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <div className="text-xs text-gray-500 mt-1">
+                  {totalMatchCount > 0 ? `找到 ${totalMatchCount} 个组件` : '未找到匹配的组件'}
+                </div>
+              )}
+            </div>
+            
+            {/* 组件列表 */}
+            <div className="flex-1 overflow-y-auto">
+              {/* 自定义组件 */}
+              {filteredCustomComponents.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                    自定义组件 ({filteredCustomComponents.length})
+                  </h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    {filteredCustomComponents.map((comp) => (
+                      <button
+                        key={comp.moduleId}
+                        onClick={() => handleAddComponentToContainer(comp.type, comp.elementData, comp.moduleId)}
+                        className="p-3 border border-gray-200 rounded hover:border-green-400 hover:bg-green-50 transition-all text-left"
+                        title={comp.description}
+                      >
+                        <div className="text-xl mb-1">{comp.icon}</div>
+                        <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
+                        {comp.description && (
+                          <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 系统组件 */}
+              {filteredSystemComponents.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                    系统组件 ({filteredSystemComponents.length})
+                  </h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    {filteredSystemComponents.map((comp) => (
+                      <button
+                        key={comp.type}
+                        onClick={() => handleAddComponentToContainer(comp.type)}
+                        className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                        title={comp.description}
+                      >
+                        <div className="text-xl mb-1">{comp.icon}</div>
+                        <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
+                        {comp.description && (
+                          <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Ant Design 组件 */}
+              {filteredAntdComponents.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                    Ant Design 组件 ({filteredAntdComponents.length})
+                  </h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    {filteredAntdComponents.map((comp) => (
+                      <button
+                        key={comp.type}
+                        onClick={() => handleAddComponentToContainer(comp.type)}
+                        className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                        title={comp.description}
+                      >
+                        <div className="text-xl mb-1">{comp.icon}</div>
+                        <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
+                        {comp.description && (
+                          <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 无搜索结果 */}
+              {searchQuery && totalMatchCount === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-sm">未找到匹配的组件</p>
+                  <p className="text-xs mt-1">尝试使用其他关键词搜索</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   )
