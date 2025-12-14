@@ -11,6 +11,7 @@ interface ElementRendererProps {
   onSelect: (id: string | null) => void
   onUpdate: (id: string, updates: Partial<Element>) => void
   onDelete: (id: string) => void
+  parentAutoFill?: boolean // 父容器是否启用自动填充
 }
 
 export function ElementRenderer({
@@ -19,6 +20,7 @@ export function ElementRenderer({
   onSelect,
   onUpdate,
   onDelete,
+  parentAutoFill = false,
 }: ElementRendererProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: element.id,
@@ -38,6 +40,35 @@ export function ElementRenderer({
     position: 'relative',
     minWidth: element.type === 'container' ? '100px' : undefined,
     minHeight: element.type === 'container' ? '50px' : undefined,
+  }
+
+  // 容器自动填充布局（如果启用）
+  if (element.type === 'container' && element.props?.autoFill) {
+    baseStyle.display = 'flex'
+    baseStyle.width = baseStyle.width || '100%'
+    baseStyle.height = baseStyle.height || '100%'
+    
+    if (element.props.flexDirection) {
+      baseStyle.flexDirection = element.props.flexDirection as 'row' | 'column'
+    }
+    
+    if (element.props.justifyContent) {
+      baseStyle.justifyContent = element.props.justifyContent as any
+    }
+    
+    if (element.props.alignItems) {
+      baseStyle.alignItems = element.props.alignItems as any
+    }
+    
+    // 子元素自动填充
+    if (element.children && element.children.length > 0) {
+      baseStyle.gap = baseStyle.gap || '0px'
+    }
+  }
+
+  // 如果父容器启用了自动填充，子元素需要 flex: 1 来填充空间
+  if (parentAutoFill) {
+    baseStyle.flex = '1'
   }
 
   // 编辑器辅助样式（不会保存到代码中）
@@ -118,6 +149,7 @@ export function ElementRenderer({
               onSelect={onSelect}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              parentAutoFill={element.props?.autoFill === true}
             />
           ))}
           {isOver && (
@@ -202,6 +234,7 @@ export function ElementRenderer({
               onSelect={onSelect}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              parentAutoFill={false}
             />
           ))}
           {isOver && (
@@ -257,6 +290,7 @@ export function ElementRenderer({
               onSelect={onSelect}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              parentAutoFill={false}
             />
           ))}
           {isOver && (

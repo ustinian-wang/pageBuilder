@@ -160,6 +160,73 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
           </div>
         )}
 
+        {/* 容器特有属性 */}
+        {element.type === 'container' && (
+          <div className="pt-4 border-t border-gray-200">
+            <h3 className="text-xs font-semibold text-gray-700 mb-2">布局设置</h3>
+            <div className="space-y-2">
+              <div>
+                <label className="flex items-center gap-2 mb-1">
+                  <input
+                    type="checkbox"
+                    checked={element.props?.autoFill === true}
+                    onChange={(e) => updateProps('autoFill', e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-xs font-medium text-gray-700">自动填充（子元素填充整个容器）</span>
+                </label>
+                <p className="text-xs text-gray-500 ml-6 mt-0.5">
+                  启用后，子元素将自动填充容器的宽高（使用 flex 布局）
+                </p>
+              </div>
+              {element.props?.autoFill && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">布局方向</label>
+                    <select
+                      value={element.props?.flexDirection || 'row'}
+                      onChange={(e) => updateProps('flexDirection', e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    >
+                      <option value="row">水平（row）</option>
+                      <option value="column">垂直（column）</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">水平对齐</label>
+                    <select
+                      value={element.props?.justifyContent || 'flex-start'}
+                      onChange={(e) => updateProps('justifyContent', e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    >
+                      <option value="flex-start">左对齐</option>
+                      <option value="center">居中</option>
+                      <option value="flex-end">右对齐</option>
+                      <option value="space-between">两端对齐</option>
+                      <option value="space-around">环绕分布</option>
+                      <option value="space-evenly">均匀分布</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">垂直对齐</label>
+                    <select
+                      value={element.props?.alignItems || 'stretch'}
+                      onChange={(e) => updateProps('alignItems', e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    >
+                      <option value="stretch">拉伸填充</option>
+                      <option value="flex-start">顶部对齐</option>
+                      <option value="center">居中对齐</option>
+                      <option value="flex-end">底部对齐</option>
+                      <option value="baseline">基线对齐</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 样式属性 */}
         <div className="pt-4 border-t border-gray-200">
           <h3 className="text-xs font-semibold text-gray-700 mb-2">样式</h3>
@@ -174,6 +241,82 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                 placeholder="例如: p-4 bg-blue-500"
               />
             </div>
+
+            {/* 容器专用样式 */}
+            {element.type === 'container' && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">背景颜色</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={element.style?.backgroundColor || '#ffffff'}
+                      onChange={(e) => updateStyle('backgroundColor', e.target.value)}
+                      className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={element.style?.backgroundColor || ''}
+                      onChange={(e) => updateStyle('backgroundColor', e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                      placeholder="#ffffff 或 transparent"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">背景图片</label>
+                  <input
+                    type="text"
+                    value={element.style?.backgroundImage?.replace(/url\(|\)/g, '') || ''}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      updateStyle('backgroundImage', value ? `url(${value})` : '')
+                    }}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    placeholder="图片URL或路径"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">圆角</label>
+                  <input
+                    type="text"
+                    value={element.style?.borderRadius || ''}
+                    onChange={(e) => updateStyle('borderRadius', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    placeholder="例如: 8px 或 50%"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">边框</label>
+                  <input
+                    type="text"
+                    value={element.style?.border || ''}
+                    onChange={(e) => updateStyle('border', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    placeholder="例如: 1px solid #ccc"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">边框颜色</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={element.style?.borderColor || '#000000'}
+                      onChange={(e) => updateStyle('borderColor', e.target.value)}
+                      className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={element.style?.borderColor || ''}
+                      onChange={(e) => updateStyle('borderColor', e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                      placeholder="#000000"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">宽度</label>
               <input
@@ -201,7 +344,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                 value={element.style?.padding || ''}
                 onChange={(e) => updateStyle('padding', e.target.value)}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                placeholder="例如: 16px"
+                placeholder="例如: 16px 或 16px 8px"
               />
             </div>
             <div>
@@ -211,7 +354,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                 value={element.style?.margin || ''}
                 onChange={(e) => updateStyle('margin', e.target.value)}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                placeholder="例如: 16px"
+                placeholder="例如: 16px 或 16px 8px"
               />
             </div>
           </div>

@@ -61,9 +61,44 @@ export class VueGenerator {
     return propEntries.length > 0 ? ' ' + propEntries.join(' ') : ''
   }
 
-  private generateElementCode(element: Element): string {
+  private generateElementCode(
+    element: Element,
+    parentAutoFill: boolean = false
+  ): string {
     const { type, props, style, className, children } = element
-    const styleStr = this.formatStyle(style)
+    
+    // 处理容器自动填充样式
+    let finalStyle = { ...style }
+    if (type === 'container' && props?.autoFill) {
+      finalStyle = {
+        ...finalStyle,
+        display: 'flex',
+        width: finalStyle.width || '100%',
+        height: finalStyle.height || '100%',
+      }
+      
+      if (props.flexDirection) {
+        finalStyle.flexDirection = props.flexDirection
+      }
+      
+      if (props.justifyContent) {
+        finalStyle.justifyContent = props.justifyContent
+      }
+      
+      if (props.alignItems) {
+        finalStyle.alignItems = props.alignItems
+      }
+    }
+    
+    // 如果父容器启用了自动填充，子元素需要 flex: 1
+    if (parentAutoFill) {
+      finalStyle = {
+        ...finalStyle,
+        flex: '1',
+      }
+    }
+    
+    const styleStr = this.formatStyle(finalStyle)
     
     // 生成组件类名（pb-{type}）并合并用户自定义类名
     // 每个组件都有 pb-{type} 类名，方便代码搜索定位
@@ -103,8 +138,9 @@ export class VueGenerator {
     // 处理子元素
     if (children && children.length > 0) {
       this.indent++
+      const isAutoFill = type === 'container' && props?.autoFill === true
       for (const child of children) {
-        content += '\n' + this.generateElementCode(child)
+        content += '\n' + this.generateElementCode(child, isAutoFill)
       }
       this.indent--
     }
@@ -150,7 +186,7 @@ export class VueGenerator {
   generate(element: Element, componentName: string = 'GeneratedPage'): string {
     this.indent = 0
 
-    const template = this.generateElementCode(element)
+    const template = this.generateElementCode(element, false)
     const script = `<script>
 export default {
   name: '${componentName}',
