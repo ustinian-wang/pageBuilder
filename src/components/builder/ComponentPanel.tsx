@@ -25,8 +25,13 @@ const systemComponents: ComponentDefinition[] = [
 // 自定义组件（从数据库加载）
 
 function DraggableComponent({ component, onPreview }: { component: ComponentDefinition; onPreview?: (component: ComponentDefinition) => void }) {
+  // 为自定义模块和系统组件生成不同的ID前缀，避免冲突
+  const dragId = component.category === 'custom' 
+    ? `custom-module-${component.type}` 
+    : `component-${component.type}`
+  
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `component-${component.type}`,
+    id: dragId,
     data: {
       type: component.category === 'custom' ? 'custom-module' : 'component',
       componentType: component.type,
@@ -45,10 +50,12 @@ function DraggableComponent({ component, onPreview }: { component: ComponentDefi
   return (
     <div
       ref={setNodeRef}
+      {...(component.category === 'system' ? { ...listeners, ...attributes } : {})}
       className={`
         p-3 bg-white border border-gray-200 rounded
         hover:border-blue-400 hover:shadow-md transition-all
         ${isDragging ? 'opacity-30' : ''}
+        ${component.category === 'system' ? 'cursor-move' : ''}
       `}
       title={component.description}
     >
