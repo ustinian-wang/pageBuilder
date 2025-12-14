@@ -240,8 +240,8 @@ export function ComponentPanel({ elements, selectedElementId, onSelect }: Compon
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
-        <div className="p-4 border-b border-gray-200 space-y-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+        <div className="p-4 border-b border-gray-200 space-y-2 flex-shrink-0">
           <TabsList className="w-full">
             <TabsTrigger value="components" className="flex-1">
               组件库
@@ -252,11 +252,11 @@ export function ComponentPanel({ elements, selectedElementId, onSelect }: Compon
           </TabsList>
         </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {activeTab === 'components' && (
-            <TabsContent value="components" className="mt-0 flex-1 flex flex-col overflow-hidden">
+            <TabsContent value="components" className="mt-0 flex-1 flex flex-col overflow-hidden min-h-0">
               {/* 搜索框 */}
-              <div className="px-4 pt-4 pb-2 border-b border-gray-200">
+              <div className="px-4 pt-4 pb-2 border-b border-gray-200 flex-shrink-0">
               <div className="relative">
                 <input
                   type="text"
@@ -308,8 +308,8 @@ export function ComponentPanel({ elements, selectedElementId, onSelect }: Compon
           )}
 
           {activeTab === 'elements' && (
-            <TabsContent value="elements" className="mt-0 flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto">
+            <TabsContent value="elements" className="mt-0 flex-1 flex flex-col overflow-hidden min-h-0">
+              <div className="flex-1 overflow-y-auto min-h-0">
                 <ElementList
                   elements={elements}
                   selectedElementId={selectedElementId}
