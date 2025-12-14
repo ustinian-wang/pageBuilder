@@ -2,7 +2,7 @@ import { Low } from 'lowdb'
 import { JSONFile } from 'lowdb/node'
 import path from 'path'
 import fs from 'fs'
-import { PageConfig } from './types'
+import { PageConfig, CustomModule } from './types'
 
 // 数据库文件路径
 const dbPath = path.join(process.cwd(), 'data', 'db.json')
@@ -20,6 +20,7 @@ if (!fs.existsSync(pagesDir)) {
 // 数据库结构
 interface Database {
   pages: PageConfig[]
+  customModules: CustomModule[]
   users: Array<{
     id: number
     username: string
@@ -30,6 +31,7 @@ interface Database {
   }>
   _meta?: {
     pageIdCounter: number
+    moduleIdCounter: number
     userIdCounter: number
   }
 }
@@ -37,9 +39,11 @@ interface Database {
 // 默认数据
 const defaultData: Database = {
   pages: [],
+  customModules: [],
   users: [],
   _meta: {
     pageIdCounter: 0,
+    moduleIdCounter: 0,
     userIdCounter: 0,
   },
 }
@@ -71,6 +75,9 @@ export async function initDB() {
   if (!Array.isArray(db.data.pages)) {
     db.data.pages = []
   }
+  if (!Array.isArray(db.data.customModules)) {
+    db.data.customModules = []
+  }
   if (!Array.isArray(db.data.users)) {
     db.data.users = []
   }
@@ -84,12 +91,20 @@ export async function initDB() {
         }))
       : 0
     
+    const maxModuleId = db.data.customModules.length > 0
+      ? Math.max(0, ...db.data.customModules.map(m => {
+          const idNum = parseInt(m.id.replace('module-', '') || '0', 10)
+          return idNum
+        }))
+      : 0
+    
     const maxUserId = db.data.users.length > 0
       ? Math.max(0, ...db.data.users.map(u => typeof u.id === 'number' ? u.id : 0))
       : 0
 
     db.data._meta = {
       pageIdCounter: maxPageId,
+      moduleIdCounter: maxModuleId,
       userIdCounter: maxUserId,
     }
     await db.write()
@@ -112,11 +127,25 @@ export async function getNextPageId(): Promise<string> {
   return `page-${db.data._meta.pageIdCounter}`
 }
 
+// 获取下一个模块 ID
+export async function getNextModuleId(): Promise<string> {
+  const db = await getDB()
+  if (!db.data._meta) {
+    db.data._meta = { pageIdCounter: 0, moduleIdCounter: 0, userIdCounter: 0 }
+  }
+  if (typeof db.data._meta.moduleIdCounter === 'undefined') {
+    db.data._meta.moduleIdCounter = 0
+  }
+  db.data._meta.moduleIdCounter++
+  await db.write()
+  return `module-${db.data._meta.moduleIdCounter}`
+}
+
 // 获取下一个用户 ID
 export async function getNextUserId(): Promise<number> {
   const db = await getDB()
   if (!db.data._meta) {
-    db.data._meta = { pageIdCounter: 0, userIdCounter: 0 }
+    db.data._meta = { pageIdCounter: 0, moduleIdCounter: 0, userIdCounter: 0 }
   }
   if (typeof db.data._meta.userIdCounter === 'undefined') {
     db.data._meta.userIdCounter = 0

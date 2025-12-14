@@ -20,6 +20,7 @@ export interface BaseElement {
   children?: Element[]
   style?: Record<string, string | number>
   className?: string
+  moduleId?: string // 如果元素来自自定义模块，保存模块ID
 }
 
 export interface Element extends BaseElement {
@@ -58,10 +59,41 @@ export interface ComponentProps {
 
 // 组件定义（用于组件库）
 export interface ComponentDefinition {
-  type: ElementType
+  type: ElementType | string // 自定义模块使用字符串类型
   label: string
   icon: string
   category: 'system' | 'custom'
   description?: string
+  elementData?: Element // 自定义模块的元素数据
+  moduleId?: string // 自定义模块的ID（仅自定义模块有此字段）
+}
+
+// 自定义模块（保存的元素配置）
+export interface CustomModule {
+  id: string
+  name: string
+  label: string
+  icon: string
+  description?: string
+  element: Element // 保存的元素配置
+  createdAt: number
+  updatedAt: number
+}
+
+// 创建自定义模块请求
+export interface CreateCustomModuleRequest {
+  name: string
+  label: string
+  icon?: string
+  description?: string
+  element: Element
+}
+
+// 更新自定义模块请求
+export interface UpdateCustomModuleRequest {
+  label?: string
+  icon?: string
+  description?: string
+  element?: Element
 }
 

@@ -36,7 +36,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
   }
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto p-4">
+    <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto p-4" data-property-panel>
       <h2 className="text-sm font-semibold text-gray-700 mb-4">属性面板</h2>
       <div className="space-y-4">
         {/* 基本信息 */}
@@ -160,7 +160,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
           </div>
         )}
 
-        {/* 容器特有属性 */}
+        {/* 容器特有属性（支持嵌套容器） */}
         {element.type === 'container' && (
           <div className="pt-4 border-t border-gray-200">
             <h3 className="text-xs font-semibold text-gray-700 mb-2">布局设置</h3>
@@ -242,7 +242,7 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
               />
             </div>
 
-            {/* 容器专用样式 */}
+            {/* 容器专用样式（支持嵌套容器，容器的容器也可以设置这些样式） */}
             {element.type === 'container' && (
               <>
                 <div>

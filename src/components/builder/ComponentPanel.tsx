@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
-import { ElementType, Element, ComponentDefinition } from '@/lib/types'
+import { ElementType, Element, ComponentDefinition, CustomModule } from '@/lib/types'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { ElementList } from './ElementList'
+import { ElementRenderer } from './ElementRenderer'
 
 // 系统组件
 const systemComponents: ComponentDefinition[] = [
@@ -21,28 +22,31 @@ const systemComponents: ComponentDefinition[] = [
   { type: 'form', label: '表单', icon: '📋', category: 'system', description: '表单容器' },
 ]
 
-// 自定义组件（可以从数据库或配置文件加载）
-const customComponents: ComponentDefinition[] = [
-  // 这里可以添加自定义组件
-  // 例如：{ type: 'custom-banner', label: '轮播图', icon: '🎠', category: 'custom', description: '图片轮播组件' },
-]
+// 自定义组件（从数据库加载）
 
-function DraggableComponent({ component }: { component: ComponentDefinition }) {
+function DraggableComponent({ component, onPreview }: { component: ComponentDefinition; onPreview?: (component: ComponentDefinition) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `component-${component.type}`,
     data: {
-      type: 'component',
+      type: component.category === 'custom' ? 'custom-module' : 'component',
       componentType: component.type,
+      elementData: component.elementData, // 自定义模块的元素数据
+      moduleId: component.moduleId, // 自定义模块的ID
     },
   })
+
+  const handlePreview = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onPreview && component.category === 'custom') {
+      onPreview(component)
+    }
+  }
 
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       className={`
-        p-3 bg-white border border-gray-200 rounded cursor-move
+        p-3 bg-white border border-gray-200 rounded
         hover:border-blue-400 hover:shadow-md transition-all
         ${isDragging ? 'opacity-30' : ''}
       `}
@@ -57,9 +61,58 @@ function DraggableComponent({ component }: { component: ComponentDefinition }) {
           )}
         </div>
         {component.category === 'custom' && (
-          <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded flex-shrink-0">
-            自定义
-          </span>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={handlePreview}
+              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+              title="预览"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+              </svg>
+            </button>
+            <div
+              {...listeners}
+              {...attributes}
+              className="p-1 cursor-move"
+              title="拖拽"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </div>
+            <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
+              自定义
+            </span>
+          </div>
         )}
       </div>
     </div>
@@ -70,10 +123,12 @@ function ComponentGroup({
   title,
   components,
   searchQuery,
+  onPreview,
 }: {
   title: string
   components: ComponentDefinition[]
   searchQuery: string
+  onPreview?: (component: ComponentDefinition) => void
 }) {
   // 过滤匹配的组件
   const filteredComponents = useMemo(() => {
@@ -83,7 +138,7 @@ function ComponentGroup({
       comp =>
         comp.label.toLowerCase().includes(query) ||
         comp.description?.toLowerCase().includes(query) ||
-        comp.type.toLowerCase().includes(query)
+        comp.type.toString().toLowerCase().includes(query)
     )
   }, [components, searchQuery])
 
@@ -96,7 +151,7 @@ function ComponentGroup({
       </h3>
       <div className="grid grid-cols-1 gap-2">
         {filteredComponents.map(component => (
-          <DraggableComponent key={component.type} component={component} />
+          <DraggableComponent key={component.type} component={component} onPreview={onPreview} />
         ))}
       </div>
     </div>
@@ -112,6 +167,44 @@ interface ComponentPanelProps {
 export function ComponentPanel({ elements, selectedElementId, onSelect }: ComponentPanelProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('components')
+  const [customComponents, setCustomComponents] = useState<ComponentDefinition[]>([])
+  const [previewComponent, setPreviewComponent] = useState<ComponentDefinition | null>(null)
+
+  // 加载自定义模块
+  useEffect(() => {
+    const loadCustomModules = async () => {
+      try {
+        const response = await fetch('/api/modules')
+        const result = await response.json()
+        if (result.success) {
+          const modules = result.data as CustomModule[]
+          const componentDefs: ComponentDefinition[] = modules.map(module => ({
+            type: module.name, // 使用模块名称作为类型
+            label: module.label,
+            icon: module.icon,
+            category: 'custom',
+            description: module.description,
+            elementData: module.element, // 保存完整的元素数据
+            moduleId: module.id, // 保存模块ID
+          }))
+          setCustomComponents(componentDefs)
+        }
+      } catch (error) {
+        console.error('加载自定义模块失败:', error)
+      }
+    }
+
+    loadCustomModules()
+
+    // 监听自定义模块保存事件
+    const handleModuleSaved = () => {
+      loadCustomModules()
+    }
+    window.addEventListener('customModuleSaved', handleModuleSaved)
+    return () => {
+      window.removeEventListener('customModuleSaved', handleModuleSaved)
+    }
+  }, [])
 
   // 计算匹配的组件数量
   const systemMatchCount = useMemo(() => {
@@ -129,12 +222,12 @@ export function ComponentPanel({ elements, selectedElementId, onSelect }: Compon
     if (!searchQuery) return customComponents.length
     const query = searchQuery.toLowerCase()
     return customComponents.filter(
-      comp =>
+      (comp: ComponentDefinition) =>
         comp.label.toLowerCase().includes(query) ||
         comp.description?.toLowerCase().includes(query) ||
-        comp.type.toLowerCase().includes(query)
+        comp.type.toString().toLowerCase().includes(query)
     ).length
-  }, [searchQuery])
+  }, [searchQuery, customComponents])
 
   const totalMatchCount = systemMatchCount + customMatchCount
 
@@ -189,6 +282,7 @@ export function ComponentPanel({ elements, selectedElementId, onSelect }: Compon
                   title="自定义组件"
                   components={customComponents}
                   searchQuery={searchQuery}
+                  onPreview={setPreviewComponent}
                 />
               )}
               <ComponentGroup
@@ -219,6 +313,60 @@ export function ComponentPanel({ elements, selectedElementId, onSelect }: Compon
           )}
         </div>
       </Tabs>
+      
+      {/* 预览对话框 */}
+      {previewComponent && previewComponent.elementData && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-[300] flex items-center justify-center p-4"
+          onClick={() => setPreviewComponent(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {previewComponent.icon} {previewComponent.label}
+                </h2>
+                {previewComponent.description && (
+                  <p className="text-sm text-gray-500 mt-1">{previewComponent.description}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setPreviewComponent(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              <div className="bg-white rounded-lg p-8 shadow-sm">
+                <ElementRenderer
+                  element={previewComponent.elementData}
+                  selectedElementId={null}
+                  onSelect={() => {}}
+                  onUpdate={() => {}}
+                  onDelete={() => {}}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

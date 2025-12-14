@@ -30,6 +30,14 @@ export default function BuilderPage() {
       const componentType = event.active.data.current.componentType as ElementType
       const componentInfo = getComponentInfo(componentType)
       setActiveDragComponent(componentInfo)
+    } else if (event.active.data.current?.type === 'custom-module') {
+      // 自定义模块的预览
+      const elementData = event.active.data.current.elementData as Element
+      setActiveDragComponent({
+        type: elementData.type,
+        label: elementData.props?.label || elementData.type,
+        icon: '📦',
+      })
     }
   }
 
@@ -48,6 +56,34 @@ export default function BuilderPage() {
         type: componentType,
         props: getDefaultProps(componentType),
       }
+
+      // 如果拖放到画布根节点
+      if (over.id === 'canvas-root') {
+        setElements([...elements, newElement])
+      } else {
+        // 拖放到现有元素内
+        const targetElement = findElementById(elements, over.id as string)
+        if (targetElement) {
+          addElementToParent(elements, targetElement.id, newElement)
+        }
+      }
+    }
+
+    // 如果是从组件面板拖拽自定义模块
+    if (active.data.current?.type === 'custom-module') {
+      const elementData = active.data.current.elementData as Element
+      const moduleId = active.data.current.moduleId as string | undefined
+      // 深拷贝元素并生成新ID，但保留moduleId
+      const cloneElement = (el: Element): Element => {
+        const newId = generateId()
+        return {
+          ...el,
+          id: newId,
+          moduleId: el.moduleId || moduleId, // 保留原有的moduleId或使用传入的moduleId
+          children: el.children ? el.children.map(cloneElement) : undefined,
+        }
+      }
+      const newElement = cloneElement(elementData)
 
       // 如果拖放到画布根节点
       if (over.id === 'canvas-root') {
