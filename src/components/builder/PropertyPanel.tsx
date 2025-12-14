@@ -105,12 +105,21 @@ export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab,
   }
 
   const updateStyle = (key: string, value: string) => {
-    onUpdate({
-      style: {
-        ...element.style,
-        [key]: value,
-      },
-    })
+    const currentStyle = element.style || {}
+    const newStyle = { ...currentStyle }
+    
+    if (value === '') {
+      // 如果值为空字符串，删除该属性
+      const { [key]: _, ...rest } = newStyle
+      onUpdate({
+        style: Object.keys(rest).length > 0 ? rest : undefined,
+      })
+    } else {
+      newStyle[key] = value
+      onUpdate({
+        style: newStyle,
+      })
+    }
   }
 
   const handleTypeChange = (newType: ElementType) => {

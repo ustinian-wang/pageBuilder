@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { TabsContent } from '@/components/ui/Tabs'
 import { PanelProps } from '../types'
 import { ElementType } from '@/lib/types'
-import { PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined, ThunderboltOutlined } from '@ant-design/icons'
 
 interface TableColumn {
   title: string
@@ -242,6 +242,82 @@ export function TablePanel({
     }
   }
 
+  // 生成随机数据
+  const handleGenerateRandomData = () => {
+    if (columns.length === 0) {
+      setJsonError('请先配置列，然后再生成随机数据')
+      return
+    }
+
+    // 根据列配置生成随机数据
+    const randomData: any[] = []
+    const chineseNames = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十', '郑一', '王二']
+    const cities = ['北京市', '上海市', '广州市', '深圳市', '杭州市', '成都市', '武汉市', '西安市', '南京市', '重庆市']
+    const departments = ['技术部', '产品部', '设计部', '运营部', '市场部', '销售部', '人事部', '财务部']
+    const statuses = ['在职', '离职', '试用期', '实习']
+    
+    for (let i = 1; i <= 100; i++) {
+      const item: any = { key: String(i) }
+      
+      columns.forEach((column) => {
+        const dataIndex = column.dataIndex
+        if (!dataIndex) return
+        
+        // 跳过 key 字段，已经在上面设置了
+        if (dataIndex === 'key') {
+          return
+        }
+        
+        // 根据 dataIndex 生成对应的随机数据
+        const dataIndexLower = dataIndex.toLowerCase()
+        if (dataIndexLower.includes('name') || dataIndexLower.includes('姓名') || dataIndexLower.includes('名称')) {
+          // 随机中文姓名
+          const firstName = chineseNames[Math.floor(Math.random() * chineseNames.length)]
+          const lastName = chineseNames[Math.floor(Math.random() * chineseNames.length)]
+          item[dataIndex] = firstName + lastName
+        } else if (dataIndexLower.includes('age') || dataIndexLower.includes('年龄')) {
+          // 随机年龄 18-65
+          item[dataIndex] = Math.floor(Math.random() * 47) + 18
+        } else if (dataIndexLower.includes('address') || dataIndexLower.includes('地址')) {
+          // 随机地址
+          item[dataIndex] = cities[Math.floor(Math.random() * cities.length)]
+        } else if (dataIndexLower.includes('department') || dataIndexLower.includes('部门')) {
+          // 随机部门
+          item[dataIndex] = departments[Math.floor(Math.random() * departments.length)]
+        } else if (dataIndexLower.includes('status') || dataIndexLower.includes('状态')) {
+          // 随机状态
+          item[dataIndex] = statuses[Math.floor(Math.random() * statuses.length)]
+        } else if (dataIndexLower.includes('email') || dataIndexLower.includes('邮箱')) {
+          // 随机邮箱
+          item[dataIndex] = `user${i}@example.com`
+        } else if (dataIndexLower.includes('phone') || dataIndexLower.includes('电话') || dataIndexLower.includes('手机')) {
+          // 随机手机号
+          item[dataIndex] = `1${Math.floor(Math.random() * 9) + 3}${Math.floor(Math.random() * 100000000).toString().padStart(9, '0')}`
+        } else if (dataIndexLower.includes('salary') || dataIndexLower.includes('薪资') || dataIndexLower.includes('工资')) {
+          // 随机薪资 5000-50000
+          item[dataIndex] = Math.floor(Math.random() * 45000) + 5000
+        } else if (dataIndexLower.includes('date') || dataIndexLower.includes('日期') || dataIndexLower.includes('时间')) {
+          // 随机日期（最近一年内）
+          const daysAgo = Math.floor(Math.random() * 365)
+          const date = new Date()
+          date.setDate(date.getDate() - daysAgo)
+          item[dataIndex] = date.toISOString().split('T')[0]
+        } else {
+          // 默认生成随机字符串
+          item[dataIndex] = `数据${i}-${Math.random().toString(36).substring(2, 8)}`
+        }
+      })
+      
+      randomData.push(item)
+    }
+    
+    // 更新数据源
+    setDataSource(randomData)
+    setDataSourceJson(JSON.stringify(randomData, null, 2))
+    setJsonError(null)
+    updateTableProps({ dataSource: randomData })
+  }
+
   // 更新分页配置
   const handlePaginationChange = (field: string, value: any) => {
     if (field === 'enabled') {
@@ -440,13 +516,23 @@ export function TablePanel({
               <p className="text-xs text-gray-500">
                 当前数据量: {Array.isArray(dataSource) ? dataSource.length : 0} 条
               </p>
-              <button
-                onClick={handleApplyDataSource}
-                disabled={!!jsonError}
-                className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
-              >
-                应用数据源
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGenerateRandomData}
+                  className="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-1"
+                  title="生成100条随机数据"
+                >
+                  <ThunderboltOutlined className="text-xs" />
+                  生成随机数据
+                </button>
+                <button
+                  onClick={handleApplyDataSource}
+                  disabled={!!jsonError}
+                  className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
+                >
+                  应用数据源
+                </button>
+              </div>
             </div>
           </div>
           <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
