@@ -6,6 +6,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { ComponentPanel } from '@/components/builder/ComponentPanel'
 import { Canvas } from '@/components/builder/Canvas'
 import { PropertyPanel } from '@/components/builder/PropertyPanel'
+import { CodeViewer } from '@/components/builder/CodeViewer'
 import { Element } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 
@@ -16,6 +17,8 @@ export default function BuilderPage() {
   const [pageName, setPageName] = useState('未命名页面')
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
+  const [generatedComponentName, setGeneratedComponentName] = useState<string>('')
 
   const selectedElement = elements.find(el => el.id === selectedElementId)
 
@@ -174,27 +177,8 @@ export default function BuilderPage() {
 
       const result = await response.json()
       if (result.success) {
-        // 在新窗口中显示代码
-        const codeWindow = window.open('', '_blank')
-        if (codeWindow) {
-          codeWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>生成的 Vue 组件代码</title>
-              <style>
-                body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
-                pre { background: #252526; padding: 20px; border-radius: 8px; overflow-x: auto; }
-                code { font-size: 14px; line-height: 1.6; }
-              </style>
-            </head>
-            <body>
-              <h2>生成的 Vue 组件代码</h2>
-              <pre><code>${escapeHtml(result.data.code)}</code></pre>
-            </body>
-            </html>
-          `)
-        }
+        setGeneratedCode(result.data.code)
+        setGeneratedComponentName(result.data.componentName)
       } else {
         alert('生成代码失败：' + result.error)
       }
@@ -204,12 +188,6 @@ export default function BuilderPage() {
     } finally {
       setGenerating(false)
     }
-  }
-
-  const escapeHtml = (text: string) => {
-    const div = document.createElement('div')
-    div.textContent = text
-    return div.innerHTML
   }
 
   return (
@@ -269,6 +247,15 @@ export default function BuilderPage() {
           />
         </DndContext>
       </div>
+
+      {/* 代码查看器弹窗 */}
+      {generatedCode && (
+        <CodeViewer
+          code={generatedCode}
+          componentName={generatedComponentName}
+          onClose={() => setGeneratedCode(null)}
+        />
+      )}
     </div>
   )
 }
