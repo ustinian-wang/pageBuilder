@@ -677,15 +677,45 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
 
         {/* 通用属性 */}
         {element.type === 'text' && (
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">文本内容</label>
-            <input
-              type="text"
-              value={element.props?.text || ''}
-              onChange={(e) => updateProps('text', e.target.value)}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">文本内容</label>
+              <input
+                type="text"
+                value={element.props?.text || ''}
+                onChange={(e) => updateProps('text', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 mb-1">
+                <input
+                  type="checkbox"
+                  checked={element.props?.textWrap !== false}
+                  onChange={(e) => updateProps('textWrap', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">文本换行</span>
+              </label>
+              <p className="text-xs text-gray-500 ml-6 mt-0.5">
+                禁用后文本将在一行显示，超出部分会被隐藏（配合文本打点使用）
+              </p>
+            </div>
+            <div>
+              <label className="flex items-center gap-2 mb-1">
+                <input
+                  type="checkbox"
+                  checked={element.props?.textEllipsis === true}
+                  onChange={(e) => updateProps('textEllipsis', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-xs font-medium text-gray-700">文本打点（省略号）</span>
+              </label>
+              <p className="text-xs text-gray-500 ml-6 mt-0.5">
+                启用后超出文本会显示省略号，需要配合禁用文本换行使用
+              </p>
+            </div>
+          </>
         )}
 
         {element.type === 'button' && (
@@ -850,6 +880,21 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                       <option value="flex-end">底部对齐</option>
                       <option value="baseline">基线对齐</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">换行 (flex-wrap)</label>
+                    <select
+                      value={element.props?.flexWrap || 'nowrap'}
+                      onChange={(e) => updateProps('flexWrap', e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                    >
+                      <option value="nowrap">不换行 (nowrap)</option>
+                      <option value="wrap">换行 (wrap)</option>
+                      <option value="wrap-reverse">反向换行 (wrap-reverse)</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      设置子元素是否换行，当容器空间不足时是否换到下一行
+                    </p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">间距 (gap)</label>

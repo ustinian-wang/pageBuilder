@@ -445,6 +445,10 @@ export function ElementRenderer({
       baseStyle.alignItems = element.props.alignItems as any
     }
     
+    if (element.props.flexWrap) {
+      baseStyle.flexWrap = element.props.flexWrap as 'nowrap' | 'wrap' | 'wrap-reverse'
+    }
+    
     // 设置 gap（如果指定了）
     if (element.props.gap !== undefined && element.props.gap !== null && element.props.gap !== '') {
       // 如果gap是纯数字，添加px单位；否则使用原始值
@@ -566,10 +570,41 @@ export function ElementRenderer({
       break
 
     case 'text':
+      // 文本样式处理
+      const textStyle: React.CSSProperties = { ...baseStyle }
+      
+      // 文本换行设置（默认允许换行）
+      if (element.props?.textWrap === false) {
+        textStyle.whiteSpace = 'nowrap'
+      }
+      
+      // 文本打点（省略号）设置
+      if (element.props?.textEllipsis === true) {
+        textStyle.overflow = 'hidden'
+        textStyle.textOverflow = 'ellipsis'
+        
+        // 如果禁用了换行，单行省略；如果允许换行，使用多行省略
+        if (element.props?.textWrap === false) {
+          // 单行省略：只需 nowrap + overflow hidden + textOverflow ellipsis
+          // 已经在上面设置了
+        } else {
+          // 多行省略：使用 -webkit-line-clamp
+          textStyle.display = '-webkit-box'
+          ;(textStyle as any).WebkitLineClamp = element.props?.maxLines || 1
+          ;(textStyle as any).WebkitBoxOrient = 'vertical'
+        }
+      }
+      
+      // 合并样式
+      const finalTextStyle: React.CSSProperties = {
+        ...textStyle,
+        ...editorStyle,
+      }
+      
       content = (
         <span
           ref={setNodeRef}
-          style={style}
+          style={finalTextStyle}
           className={element.className}
           onClick={handleClick}
           onContextMenu={handleContextMenu}
