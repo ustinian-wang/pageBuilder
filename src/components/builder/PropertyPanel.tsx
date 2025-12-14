@@ -190,7 +190,7 @@ function getAntdDefaultProps(type: ElementType): Record<string, any> {
     'a-col': { span: 12 },
     'a-layout': {},
     'a-menu': {},
-    'a-tabs': {},
+    'a-tabs': { items: [] },
     'a-collapse': {},
     'a-timeline': {},
     'a-list': {},
@@ -1007,6 +1007,204 @@ export function PropertyPanel({ element, onUpdate }: PropertyPanelProps) {
                 onChange={(e) => updateProps('span', Number(e.target.value))}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
               />
+            </div>
+          )
+          break
+
+        case 'a-tabs':
+          // Tabs 配置：支持多个 tab 的配置
+          const tabsItems = element.props?.items || []
+          basicContent.push(
+            <div key="tabs-config">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-medium text-gray-700">Tab 列表</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newItems = [
+                      ...tabsItems,
+                      {
+                        key: `tab-${Date.now()}`,
+                        label: `Tab ${tabsItems.length + 1}`,
+                        children: null, // 初始为空，可以后续添加内容
+                      },
+                    ]
+                    updateProps('items', newItems)
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1"
+                >
+                  {React.createElement(PlusOutlined, { className: 'text-xs' })}
+                  添加 Tab
+                </button>
+              </div>
+              {tabsItems.length === 0 ? (
+                <p className="text-xs text-gray-500 py-2">暂无 Tab，点击"添加 Tab"按钮添加</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {tabsItems.map((tab: any, index: number) => (
+                    <div key={tab.key || index} className="p-2 border border-gray-200 rounded bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-gray-600">Tab {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = tabsItems.filter((_: any, i: number) => i !== index)
+                            updateProps('items', newItems)
+                          }}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          title="删除"
+                        >
+                          {React.createElement(DeleteOutlined, { className: 'text-xs' })}
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Tab 标题</label>
+                          <input
+                            type="text"
+                            value={tab.label || ''}
+                            onChange={(e) => {
+                              const newItems = [...tabsItems]
+                              newItems[index] = { ...tab, label: e.target.value }
+                              updateProps('items', newItems)
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            placeholder="Tab 标题"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Tab Key</label>
+                          <input
+                            type="text"
+                            value={tab.key || ''}
+                            onChange={(e) => {
+                              const newItems = [...tabsItems]
+                              newItems[index] = { ...tab, key: e.target.value }
+                              updateProps('items', newItems)
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            placeholder="Tab Key（唯一标识）"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Tab 内容（文本）</label>
+                          <textarea
+                            value={
+                              Array.isArray(tab.children)
+                                ? ''
+                                : typeof tab.children === 'string'
+                                ? tab.children
+                                : ''
+                            }
+                            onChange={(e) => {
+                              const newItems = [...tabsItems]
+                              // 如果 children 是数组（Element 数组），则保持数组；否则设置为文本
+                              newItems[index] = {
+                                ...tab,
+                                children: Array.isArray(tab.children) ? tab.children : e.target.value || null,
+                              }
+                              updateProps('items', newItems)
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            placeholder="Tab 内容（文本）"
+                            rows={2}
+                            disabled={Array.isArray(tab.children)}
+                          />
+                          {Array.isArray(tab.children) && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              此 Tab 包含 {tab.children.length} 个子元素，请在画布中编辑
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Tab 排序按钮 */}
+                      <div className="flex gap-1 mt-2">
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newItems = [...tabsItems]
+                              ;[newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]]
+                              updateProps('items', newItems)
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                            title="上移"
+                          >
+                            {React.createElement(ArrowUpOutlined, { className: 'text-xs' })}
+                          </button>
+                        )}
+                        {index < tabsItems.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newItems = [...tabsItems]
+                              ;[newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]
+                              updateProps('items', newItems)
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                            title="下移"
+                          >
+                            {React.createElement(ArrowDownOutlined, { className: 'text-xs' })}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* 其他 Tabs 属性 */}
+              <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">默认激活的 Tab Key</label>
+                  <select
+                    value={element.props?.defaultActiveKey || ''}
+                    onChange={(e) => updateProps('defaultActiveKey', e.target.value || undefined)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                  >
+                    <option value="">无</option>
+                    {tabsItems.map((tab: any) => (
+                      <option key={tab.key} value={tab.key}>
+                        {tab.label || tab.key}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={element.props?.centered === true}
+                      onChange={(e) => updateProps('centered', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs font-medium text-gray-700">标签居中</span>
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">标签位置</label>
+                  <select
+                    value={element.props?.tabPosition || 'top'}
+                    onChange={(e) => updateProps('tabPosition', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                  >
+                    <option value="top">顶部</option>
+                    <option value="bottom">底部</option>
+                    <option value="left">左侧</option>
+                    <option value="right">右侧</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={element.props?.type === 'card'}
+                      onChange={(e) => updateProps('type', e.target.checked ? 'card' : undefined)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs font-medium text-gray-700">卡片式标签</span>
+                  </label>
+                </div>
+              </div>
             </div>
           )
           break

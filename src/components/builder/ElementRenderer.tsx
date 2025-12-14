@@ -1020,10 +1020,65 @@ export function ElementRenderer({
       break
 
     case 'a-tabs':
+      // Ant Design Tabs 支持 items 配置方式
+      const tabsProps = { ...(element.props || {}) }
+      
+      // 如果使用 items 配置，需要处理 children
+      if (tabsProps.items && Array.isArray(tabsProps.items)) {
+        // 将 items 中的每个 tab 的 children 转换为 React 节点
+        const processedItems = tabsProps.items.map((tabItem: any) => {
+          // 如果 children 是 Element 数组（用于页面构建器的元素树）
+          if (Array.isArray(tabItem.children) && tabItem.children.length > 0) {
+            // 检查是否是 Element 对象（有 id 和 type 属性）
+            const isElementArray = tabItem.children.every(
+              (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
+            )
+            
+            if (isElementArray) {
+              // 是 Element 数组，转换为 React 节点
+              return {
+                ...tabItem,
+                children: (
+                  <div>
+                    {tabItem.children.map((child: Element) => (
+                      <ElementRenderer
+                        key={child.id}
+                        element={child}
+                        selectedElementId={selectedElementId}
+                        onSelect={onSelect}
+                        onUpdate={onUpdate}
+                        onDelete={onDelete}
+                        parentAutoFill={false}
+                      />
+                    ))}
+                  </div>
+                ),
+              }
+            }
+          }
+          
+          // 如果 children 是字符串、数字或其他简单类型，直接使用
+          // 如果 children 是 null 或 undefined，使用空字符串或 label
+          return {
+            ...tabItem,
+            children: tabItem.children !== null && tabItem.children !== undefined
+              ? tabItem.children
+              : tabItem.label || '',
+          }
+        })
+        
+        tabsProps.items = processedItems
+      } else {
+        // 如果没有 items 配置，使用 children 方式（向后兼容）
+        // 注意：Ant Design v5+ 主要使用 items，但也可以使用 TabPane 方式
+        // 这里保持原有逻辑
+      }
+      
       content = (
         <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
-          <Tabs {...(element.props || {})}>
-            {element.children?.map(child => (
+          <Tabs {...tabsProps}>
+            {/* 如果没有 items，使用 children 方式 */}
+            {!tabsProps.items && element.children?.map(child => (
               <ElementRenderer
                 key={child.id}
                 element={child}
