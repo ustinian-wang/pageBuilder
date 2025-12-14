@@ -21,9 +21,10 @@ export function Canvas({ elements, selectedElementId, onSelect, onUpdate, onDele
     <div
       ref={setNodeRef}
       className={`
-        min-h-full bg-white rounded-lg shadow-lg p-8
+        h-full bg-white rounded-lg shadow-lg p-8
         ${isOver ? 'ring-2 ring-blue-400 ring-offset-2' : ''}
       `}
+      style={{ minHeight: '100%', boxSizing: 'border-box' }}
     >
       {elements.length === 0 ? (
         <div className="h-full flex items-center justify-center text-gray-400">
@@ -33,7 +34,7 @@ export function Canvas({ elements, selectedElementId, onSelect, onUpdate, onDele
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="h-full" style={{ position: 'relative', height: '100%' }}>
           {elements.map(element => (
             <ElementRenderer
               key={element.id}

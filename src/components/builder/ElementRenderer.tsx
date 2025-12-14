@@ -247,14 +247,25 @@ export function ElementRenderer({
   const baseStyle: React.CSSProperties = {
     ...element.style,
     position: 'relative',
-    minWidth: element.type === 'container' ? '100px' : undefined,
-    minHeight: element.type === 'container' ? '50px' : undefined,
+    boxSizing: 'border-box', // 确保padding和border包含在高度内
+  }
+
+  // 设置默认最小尺寸（仅在未在style中指定时）
+  if (element.type === 'container') {
+    if (!baseStyle.minWidth) {
+      baseStyle.minWidth = '100px'
+    }
+    if (!baseStyle.minHeight) {
+      baseStyle.minHeight = '50px'
+    }
   }
 
   // 容器自动填充布局（如果启用）
   if (element.type === 'container' && element.props?.autoFill) {
     baseStyle.display = 'flex'
     baseStyle.width = baseStyle.width || '100%'
+    // 确保容器有高度，这样子元素才能使用 height: 100% 来填充
+    // 如果父容器启用了autoFill，父容器应该有高度，所以这里也设置height: 100%
     baseStyle.height = baseStyle.height || '100%'
     
     if (element.props.flexDirection) {
@@ -275,9 +286,17 @@ export function ElementRenderer({
     }
   }
 
-  // 如果父容器启用了自动填充，子元素需要 flex: 1 来填充空间
+  // 如果父容器启用了自动填充，子元素使用 height: 100% 来填充父容器
+  // 注意：这要求父容器有明确的高度（上面的逻辑已经确保启用autoFill的容器有height: 100%）
   if (parentAutoFill) {
-    baseStyle.flex = '1'
+    // 如果子元素没有显式设置高度，使用 100% 来填充父容器
+    if (!baseStyle.height) {
+      baseStyle.height = '100%'
+    }
+    // 同样处理宽度
+    if (!baseStyle.width && element.type === 'container') {
+      baseStyle.width = '100%'
+    }
   }
 
   // 编辑器辅助样式（不会保存到代码中）
