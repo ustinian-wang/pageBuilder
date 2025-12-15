@@ -126,6 +126,129 @@ export function renderCommonAntdBasicPanel({
       )
       break
 
+    case 'a-popover':
+      basicContent.push(
+        <div key="title">
+          <label className="block text-xs font-medium text-gray-700 mb-1">标题 (title)</label>
+          <input
+            type="text"
+            value={element.props?.title || ''}
+            onChange={(e) => updateProps('title', e.target.value)}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+            placeholder="请输入Popover标题"
+          />
+          <p className="text-xs text-gray-500 mt-1">Popover气泡卡片的标题</p>
+        </div>
+      )
+      basicContent.push(
+        <div key="content">
+          <label className="block text-xs font-medium text-gray-700 mb-1">内容 (content)</label>
+          <textarea
+            value={element.props?.content || ''}
+            onChange={(e) => updateProps('content', e.target.value)}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+            placeholder="请输入Popover内容"
+            rows={3}
+          />
+          <p className="text-xs text-gray-500 mt-1">Popover气泡卡片的内容，支持多行文本</p>
+        </div>
+      )
+      basicContent.push(
+        <div key="placement">
+          <label className="block text-xs font-medium text-gray-700 mb-1">位置 (placement)</label>
+          <select
+            value={element.props?.placement || 'top'}
+            onChange={(e) => updateProps('placement', e.target.value)}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+          >
+            <option value="top">上方 (top)</option>
+            <option value="topLeft">上方左侧 (topLeft)</option>
+            <option value="topRight">上方右侧 (topRight)</option>
+            <option value="left">左侧 (left)</option>
+            <option value="leftTop">左侧上方 (leftTop)</option>
+            <option value="leftBottom">左侧下方 (leftBottom)</option>
+            <option value="right">右侧 (right)</option>
+            <option value="rightTop">右侧上方 (rightTop)</option>
+            <option value="rightBottom">右侧下方 (rightBottom)</option>
+            <option value="bottom">下方 (bottom)</option>
+            <option value="bottomLeft">下方左侧 (bottomLeft)</option>
+            <option value="bottomRight">下方右侧 (bottomRight)</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">Popover相对于触发元素的位置</p>
+        </div>
+      )
+      basicContent.push(
+        <div key="trigger">
+          <label className="block text-xs font-medium text-gray-700 mb-1">触发方式 (trigger)</label>
+          <select
+            value={element.props?.trigger || 'hover'}
+            onChange={(e) => updateProps('trigger', e.target.value)}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+          >
+            <option value="hover">悬停 (hover)</option>
+            <option value="focus">聚焦 (focus)</option>
+            <option value="click">点击 (click)</option>
+            <option value="contextMenu">右键 (contextMenu)</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">触发Popover显示的方式</p>
+        </div>
+      )
+      basicContent.push(
+        <div key="overlayClassName">
+          <label className="block text-xs font-medium text-gray-700 mb-1">气泡卡片类名</label>
+          <input
+            type="text"
+            value={element.props?.overlayClassName || ''}
+            onChange={(e) => updateProps('overlayClassName', e.target.value || undefined)}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+            placeholder="例如: custom-popover"
+          />
+          <p className="text-xs text-gray-500 mt-1">为Popover气泡卡片添加自定义CSS类名</p>
+        </div>
+      )
+      basicContent.push(
+        <div key="overlayStyle">
+          <label className="block text-xs font-medium text-gray-700 mb-1">气泡卡片样式</label>
+          <input
+            type="text"
+            value={element.props?.overlayStyle || ''}
+            onChange={(e) => updateProps('overlayStyle', e.target.value || undefined)}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+            placeholder="例如: { maxWidth: '300px' }"
+          />
+          <p className="text-xs text-gray-500 mt-1">为Popover气泡卡片添加内联样式（JSON格式）</p>
+        </div>
+      )
+      basicContent.push(
+        <div key="open">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={element.props?.open === true}
+              onChange={(e) => updateProps('open', e.target.checked || undefined)}
+              className="w-4 h-4"
+            />
+            <span className="text-xs font-medium text-gray-700">受控显示状态</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6 mt-0.5">是否受控显示Popover（需要配合onOpenChange使用）</p>
+        </div>
+      )
+      basicContent.push(
+        <div key="arrow">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={element.props?.arrow !== false}
+              onChange={(e) => updateProps('arrow', e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-xs font-medium text-gray-700">显示箭头</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6 mt-0.5">是否显示Popover的箭头指示器</p>
+        </div>
+      )
+      break
+
     // 其他组件类型的处理可以继续添加...
     // 为了简化，这里只展示几个示例
     default:

@@ -53,6 +53,7 @@ const antdComponents: ComponentDefinition[] = [
   { type: 'a-empty', label: 'Empty', icon: '📭', category: 'system', description: 'Ant Design 空状态' },
   { type: 'a-spin', label: 'Spin', icon: '🌀', category: 'system', description: 'Ant Design 加载中' },
   { type: 'a-alert', label: 'Alert', icon: '⚠️', category: 'system', description: 'Ant Design 警告提示' },
+  { type: 'a-popover', label: 'Popover', icon: '💭', category: 'system', description: 'Ant Design 气泡卡片' },
 ]
 
 // 自定义组件（从数据库加载）

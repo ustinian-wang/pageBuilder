@@ -36,6 +36,7 @@ import {
   Spin,
   Alert,
   Modal,
+  Popover,
 } from 'antd'
 // Ant Design 图标导入
 import {
@@ -187,6 +188,7 @@ const antdComponents: Array<{ type: ElementType; label: string; icon: string; de
   { type: 'a-empty', label: 'Empty', icon: '📭', description: 'Ant Design 空状态' },
   { type: 'a-spin', label: 'Spin', icon: '🌀', description: 'Ant Design 加载中' },
   { type: 'a-alert', label: 'Alert', icon: '⚠️', description: 'Ant Design 警告提示' },
+  { type: 'a-popover', label: 'Popover', icon: '💭', description: 'Ant Design 气泡卡片' },
 ]
 
 // 获取默认属性
@@ -235,6 +237,7 @@ const getDefaultProps = (type: ElementType): Record<string, any> => {
     'a-empty': {},
     'a-spin': {},
     'a-alert': { message: 'Alert', type: 'info' },
+    'a-popover': { title: 'Popover标题', content: 'Popover内容' },
   }
   return defaults[type] || {}
 }
@@ -2335,6 +2338,43 @@ export function ElementRenderer({
               />
             ))}
           </Spin>
+        </div>
+      )
+      break
+
+    case 'a-popover':
+      // Popover 需要包裹一个触发元素
+      const popoverProps = { ...(element.props || {}) }
+      const popoverTitle = popoverProps.title || 'Popover标题'
+      const popoverContent = popoverProps.content || 'Popover内容'
+      // 移除 title 和 content，因为 Popover 使用 content 属性
+      delete popoverProps.title
+      delete popoverProps.content
+      
+      content = (
+        <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
+          <Popover 
+            {...popoverProps}
+            title={popoverTitle}
+            content={popoverContent}
+          >
+            {/* 默认触发元素，如果有子元素则使用子元素 */}
+            {element.children && element.children.length > 0 ? (
+              element.children.map(child => (
+                <ElementRenderer
+                  key={child.id}
+                  element={child}
+                  selectedElementId={selectedElementId}
+                  onSelect={onSelect}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  parentAutoFill={false}
+                />
+              ))
+            ) : (
+              <Button type="primary">点击查看 Popover</Button>
+            )}
+          </Popover>
         </div>
       )
       break

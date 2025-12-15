@@ -30,6 +30,7 @@ export const antdComponentTypes: Array<{ type: ElementType; label: string; icon:
   { type: 'a-empty', label: 'Empty', icon: '📭' },
   { type: 'a-spin', label: 'Spin', icon: '🌀' },
   { type: 'a-alert', label: 'Alert', icon: '⚠️' },
+  { type: 'a-popover', label: 'Popover', icon: '💭' },
 ]
 
 // 获取 Ant Design 组件的默认属性
@@ -79,6 +80,7 @@ export function getAntdDefaultProps(type: ElementType): Record<string, any> {
     'a-empty': {},
     'a-spin': {},
     'a-alert': { message: 'Alert', type: 'info' },
+    'a-popover': { title: 'Popover标题', content: 'Popover内容' },
   }
   return defaults[type] || {}
 }
