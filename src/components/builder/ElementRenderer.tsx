@@ -933,10 +933,9 @@ export function ElementRenderer({
   onCopy,
   parentAutoFill = false,
 }: ElementRendererProps) {
-  // layout 组件不允许直接接收拖拽，只能拖入其子 container 中
+  // layout 组件允许显示 hover 状态，但在 handleDragEnd 中会阻止实际放置
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: element.id,
-    disabled: element.type === 'layout', // 禁用 layout 的拖拽接收
   })
 
   const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
@@ -1582,7 +1581,9 @@ export function ElementRenderer({
             />
           ))}
           {isOver && (
-            <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 z-0 pointer-events-none" />
+            <div className="absolute inset-0 border-2 border-dashed border-red-400 bg-red-50 bg-opacity-50 z-0 pointer-events-none flex items-center justify-center">
+              <span className="text-xs text-red-600 font-medium bg-white px-2 py-1 rounded shadow">请拖入子 container 中</span>
+            </div>
           )}
           {isSelected && (
             <>
