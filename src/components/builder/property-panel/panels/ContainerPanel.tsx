@@ -305,6 +305,32 @@ export function ContainerPanel({
             />
             <p className="text-xs text-gray-500 mt-1">设置容器的外边距</p>
           </div>
+
+          {/* 最小宽度 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">最小宽度 (min-width)</label>
+            <input
+              type="text"
+              value={element.style?.minWidth || ''}
+              onChange={(e) => updateStyle('minWidth', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              placeholder="例如: 100px 或 50%"
+            />
+            <p className="text-xs text-gray-500 mt-1">设置容器的最小宽度</p>
+          </div>
+
+          {/* 最小高度 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">最小高度 (min-height)</label>
+            <input
+              type="text"
+              value={element.style?.minHeight || ''}
+              onChange={(e) => updateStyle('minHeight', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+              placeholder="例如: 100px 或 50vh"
+            />
+            <p className="text-xs text-gray-500 mt-1">设置容器的最小高度</p>
+          </div>
         </div>
       </div>
     </TabsContent>
