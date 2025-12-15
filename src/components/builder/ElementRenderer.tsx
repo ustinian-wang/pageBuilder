@@ -146,6 +146,7 @@ const getIconComponent = (iconName: string | undefined): React.ReactNode | undef
 // 系统组件（与 ComponentPanel 保持一致）
 const systemComponents: Array<{ type: ElementType; label: string; icon: string; description?: string }> = [
   { type: 'container', label: '容器', icon: '📦', description: '用于包裹其他组件的容器' },
+  { type: 'layout', label: '布局', icon: '📐', description: '布局容器，包含两个子容器，允许添加模块' },
   { type: 'text', label: '文本', icon: '📝', description: '普通文本元素' },
   { type: 'button', label: '按钮', icon: '🔘', description: '可点击的按钮' },
   { type: 'input', label: '输入框', icon: '📥', description: '文本输入框' },
@@ -195,6 +196,7 @@ const antdComponents: Array<{ type: ElementType; label: string; icon: string; de
 const getDefaultProps = (type: ElementType): Record<string, any> => {
   const defaults: Record<string, Record<string, any>> = {
     container: {},
+    layout: {},
     text: { text: '文本' },
     button: { text: '按钮', variant: 'primary' },
     input: { placeholder: '请输入' },
@@ -1050,12 +1052,55 @@ export function ElementRenderer({
         }
       }
       newElement = cloneElement(elementData)
+      
+      // 如果自定义模块是 layout 类型但没有 children，自动创建2个 container 子元素，并设置默认样式
+      if (newElement.type === 'layout' && (!newElement.children || newElement.children.length === 0)) {
+        newElement.style = {
+          ...newElement.style,
+          display: 'flex',
+          flexDirection: 'row',
+          padding: newElement.style?.padding || '8px',
+        }
+        newElement.children = [
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+        ]
+      }
     } else {
       // 系统组件
       newElement = {
         id: generateId(),
         type: componentType as ElementType,
         props: getDefaultProps(componentType as ElementType),
+      }
+      
+      // 如果是 layout 组件，自动创建2个 container 子元素，并设置默认样式
+      if (componentType === 'layout') {
+        newElement.style = {
+          display: 'flex',
+          flexDirection: 'row',
+          padding: '8px',
+        }
+        newElement.children = [
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+        ]
       }
     }
     
@@ -1329,7 +1374,7 @@ export function ElementRenderer({
   }
 
   // 设置默认最小尺寸（仅在未在style中指定时）
-  if (element.type === 'container') {
+  if (element.type === 'container' || element.type === 'layout') {
     if (!baseStyle.minWidth) {
       baseStyle.minWidth = '100px'
     }
@@ -1342,8 +1387,8 @@ export function ElementRenderer({
     }
   }
 
-  // 容器 Flex 布局设置（保留向后兼容，支持通过 props 设置，但优先使用 style）
-  if (element.type === 'container') {
+  // 容器和布局 Flex 布局设置（保留向后兼容，支持通过 props 设置，但优先使用 style）
+  if (element.type === 'container' || element.type === 'layout') {
     // 如果启用了 autoFill（向后兼容），自动设置 display: flex 和默认值
     if (element.props?.autoFill && !baseStyle.display) {
       baseStyle.display = 'flex'
@@ -1518,6 +1563,36 @@ export function ElementRenderer({
       )
       break
 
+    case 'layout':
+      // Layout 组件：渲染自身可添加模块，同时包含2个 container 子元素
+      content = (
+        <>
+          {element.children?.map(child => (
+            <ElementRenderer
+              key={child.id}
+              element={child}
+              selectedElementId={selectedElementId}
+              onSelect={onSelect}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onCopy={onCopy}
+              parentAutoFill={element.props?.autoFill === true}
+            />
+          ))}
+          {isOver && (
+            <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 z-0 pointer-events-none" />
+          )}
+          {isSelected && (
+            <>
+              <ResizeHandle position="right" onResize={handleResize} />
+              <ResizeHandle position="bottom" onResize={handleResize} />
+              <ResizeHandle position="bottom-right" onResize={handleResize} />
+            </>
+          )}
+        </>
+      )
+      break
+
     case 'text':
       // 文本样式处理
       const textStyle: React.CSSProperties = { ...baseStyle }
@@ -1638,9 +1713,11 @@ export function ElementRenderer({
       break
 
     case 'heading':
-      const HeadingTag = `h${element.props?.level || 1}` as keyof JSX.IntrinsicElements
+      const headingLevel = element.props?.level || 1
+      const HeadingTag = `h${headingLevel}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
+      const HeadingComponent = HeadingTag
       content = (
-        <HeadingTag
+        <HeadingComponent
           ref={setNodeRef}
           style={style}
           className={element.className}
@@ -1648,7 +1725,7 @@ export function ElementRenderer({
           onContextMenu={handleContextMenu}
         >
           {element.props?.text || '标题'}
-        </HeadingTag>
+        </HeadingComponent>
       )
       break
 
@@ -2479,8 +2556,8 @@ export function ElementRenderer({
       )
   }
 
-  // 对于 container 类型，样式直接应用到外层的 relative group div
-  const isContainer = element.type === 'container'
+  // 对于 container 和 layout 类型，样式直接应用到外层的 relative group div
+  const isContainer = element.type === 'container' || element.type === 'layout'
   const wrapperClassName = isContainer 
     ? `relative group ${element.className || ''}`.trim()
     : 'relative group'
@@ -2624,8 +2701,8 @@ export function ElementRenderer({
               </svg>
               复制
             </button>
-            {/* 容器组件显示添加组件选项 */}
-            {element.type === 'container' && (
+            {/* 容器组件和布局组件显示添加组件选项 */}
+            {(element.type === 'container' || element.type === 'layout') && (
               <>
                 <div className="border-t border-gray-200 my-1"></div>
                 <button
@@ -2807,8 +2884,8 @@ export function ElementRenderer({
         </>
       )}
       
-      {/* 组件选择对话框（用于容器组件） */}
-      {element.type === 'container' && (
+      {/* 组件选择对话框（用于容器组件和布局组件） */}
+      {(element.type === 'container' || element.type === 'layout') && (
         <Modal
           title="选择组件"
           open={showComponentModal}

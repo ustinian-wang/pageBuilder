@@ -288,6 +288,27 @@ export default function BuilderPage() {
         props: getDefaultProps(componentType),
       }
       
+      // 如果是 layout 组件，自动创建2个 container 子元素，并设置默认样式
+      if (componentType === 'layout') {
+        newElement.style = {
+          display: 'flex',
+          flexDirection: 'row',
+          padding: '8px',
+        }
+        newElement.children = [
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+        ]
+      }
+      
       // 如果是 tabs 组件，为每个 tab 创建默认的 container
       if (componentType === 'a-tabs' && newElement.props?.items && Array.isArray(newElement.props.items)) {
         const defaultContainerId = generateId()
@@ -512,6 +533,28 @@ export default function BuilderPage() {
         }
       }
       const newElement = cloneElement(elementData)
+      
+      // 如果自定义模块是 layout 类型但没有 children，自动创建2个 container 子元素，并设置默认样式
+      if (newElement.type === 'layout' && (!newElement.children || newElement.children.length === 0)) {
+        newElement.style = {
+          ...newElement.style,
+          display: 'flex',
+          flexDirection: 'row',
+          padding: newElement.style?.padding || '8px',
+        }
+        newElement.children = [
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+          {
+            id: generateId(),
+            type: 'container',
+            props: {},
+          },
+        ]
+      }
 
       // 如果拖放到画布根节点
       if (over.id === 'canvas-root') {
@@ -1531,6 +1574,7 @@ export default function BuilderPage() {
 function getDefaultProps(type: Element['type']): Record<string, any> {
   const defaults: Record<string, Record<string, any>> = {
     container: {},
+    layout: {},
     text: { text: '文本' },
     button: { text: '按钮', variant: 'primary' },
     input: { placeholder: '请输入' },
@@ -1597,8 +1641,9 @@ function getDefaultProps(type: Element['type']): Record<string, any> {
 }
 
 function getComponentInfo(type: ElementType): { type: ElementType; label: string; icon: string } {
-  const componentMap: Record<ElementType, { label: string; icon: string }> = {
+  const componentMap: Partial<Record<ElementType, { label: string; icon: string }>> = {
     container: { label: '容器', icon: '📦' },
+    layout: { label: '布局', icon: '📐' },
     text: { label: '文本', icon: '📝' },
     button: { label: '按钮', icon: '🔘' },
     input: { label: '输入框', icon: '📥' },
@@ -1610,6 +1655,6 @@ function getComponentInfo(type: ElementType): { type: ElementType; label: string
     list: { label: '列表', icon: '📋' },
     form: { label: '表单', icon: '📋' },
   }
-  return { type, ...componentMap[type] }
+  return { type, ...(componentMap[type] || { label: type, icon: '📦' }) }
 }
 

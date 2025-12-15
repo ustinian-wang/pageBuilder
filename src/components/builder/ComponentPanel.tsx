@@ -11,6 +11,7 @@ import { Tooltip } from 'antd'
 // 系统组件
 const systemComponents: ComponentDefinition[] = [
   { type: 'container', label: '容器', icon: '📦', category: 'system', description: '用于包裹其他组件的容器' },
+  { type: 'layout', label: '布局', icon: '📐', category: 'system', description: '布局容器，包含两个子容器，允许添加模块' },
   { type: 'text', label: '文本', icon: '📝', category: 'system', description: '普通文本元素' },
   { type: 'button', label: '按钮', icon: '🔘', category: 'system', description: '可点击的按钮' },
   { type: 'input', label: '输入框', icon: '📥', category: 'system', description: '文本输入框' },

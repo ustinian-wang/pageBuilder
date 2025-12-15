@@ -16,6 +16,7 @@ interface ElementListProps {
 function getElementTypeLabel(type: Element['type']): string {
   const labels: Partial<Record<Element['type'], string>> = {
     container: '容器',
+    layout: '布局',
     text: '文本',
     button: '按钮',
     input: '输入框',
@@ -70,6 +71,7 @@ function getElementTypeLabel(type: Element['type']): string {
 function getElementTypeIcon(type: Element['type']): string {
   const icons: Partial<Record<Element['type'], string>> = {
     container: '📦',
+    layout: '📐',
     text: '📝',
     button: '🔘',
     input: '📥',

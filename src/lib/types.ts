@@ -2,6 +2,7 @@
 
 export type ElementType =
   | 'container'
+  | 'layout'
   | 'text'
   | 'button'
   | 'input'

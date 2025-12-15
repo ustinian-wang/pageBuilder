@@ -578,8 +578,8 @@ export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab,
     )
   }
 
-  // Container 组件使用专门的配置面板
-  if (element.type === 'container') {
+  // Container 和 Layout 组件使用专门的配置面板
+  if (element.type === 'container' || element.type === 'layout') {
     const panelProps = {
       element,
       updateProps,
