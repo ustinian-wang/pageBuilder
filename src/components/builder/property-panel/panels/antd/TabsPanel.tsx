@@ -30,6 +30,7 @@ export function TabsPanel({
   const [size, setSize] = useState<'large' | 'middle' | 'small' | undefined>(undefined)
   const [centered, setCentered] = useState(false)
   const [tabPosition, setTabPosition] = useState<'top' | 'right' | 'bottom' | 'left'>('top')
+  const [contentPadding, setContentPadding] = useState<string>('')
 
   // 初始化数据 - 只在元素ID变化时重新初始化
   useEffect(() => {
@@ -50,6 +51,7 @@ export function TabsPanel({
     setSize(element.props?.size)
     setCentered(element.props?.centered === true)
     setTabPosition(element.props?.tabPosition || 'top')
+    setContentPadding(element.props?.contentPadding || '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element.id]) // 只在元素ID变化时重新初始化
 
@@ -61,6 +63,7 @@ export function TabsPanel({
     size?: any
     centered?: any
     tabPosition?: any
+    contentPadding?: any
   }>({})
 
   useEffect(() => {
@@ -138,6 +141,10 @@ export function TabsPanel({
     if (element.props?.tabPosition !== prevPropsRef.current.tabPosition) {
       setTabPosition(element.props.tabPosition || 'top')
       prevPropsRef.current.tabPosition = element.props.tabPosition
+    }
+    if (element.props?.contentPadding !== prevPropsRef.current.contentPadding) {
+      setContentPadding(element.props.contentPadding || '')
+      prevPropsRef.current.contentPadding = element.props.contentPadding
     }
   }, [element.props])
 
@@ -465,6 +472,23 @@ export function TabsPanel({
           <span className="text-xs font-medium text-gray-700">居中显示</span>
         </label>
         <p className="text-xs text-gray-500 mt-1 ml-6">标签页标题居中显示</p>
+      </div>
+
+      {/* 内容区域内间距 */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">内容区域内间距 (contentPadding)</label>
+        <input
+          type="text"
+          value={contentPadding}
+          onChange={(e) => {
+            const newValue = e.target.value.trim()
+            setContentPadding(newValue)
+            updateProps('contentPadding', newValue || undefined)
+          }}
+          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+          placeholder="例如: 16px 或 16px 8px"
+        />
+        <p className="text-xs text-gray-500 mt-1">设置标签页内容区域的内间距，支持 CSS padding 值</p>
       </div>
     </TabsContent>
   )

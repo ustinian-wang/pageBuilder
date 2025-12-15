@@ -252,6 +252,7 @@ const TabContentRenderer = ({
   onUpdate,
   onDelete,
   onCopy,
+  contentPadding,
 }: { 
   elementId: string
   tabKey: string
@@ -262,6 +263,7 @@ const TabContentRenderer = ({
   onUpdate: (id: string, updates: Partial<Element>) => void
   onDelete: (id: string) => void
   onCopy?: (element: Element) => void
+  contentPadding?: string
 }) => {
   const tabDroppableId = `tab-content-${elementId}-${tabKey}`
   const { setNodeRef: setTabDroppableRef, isOver: isTabOver } = useDroppable({
@@ -399,11 +401,21 @@ const TabContentRenderer = ({
     
     if (isElementArray) {
       // 是 Element 数组，渲染为可拖拽区域
+      // 解析 contentPadding，支持多种格式：16px, 16px 8px, 16px 8px 4px 2px 等
+      const paddingStyle = contentPadding 
+        ? { padding: contentPadding }
+        : { padding: '8px' } // 默认值
+      
       return (
         <div
           ref={setTabDroppableRef}
-          className="relative min-h-[60px] p-2"
-          style={{ minHeight: '60px', position: 'relative', zIndex: 1 }}
+          className="relative min-h-[60px]"
+          style={{ 
+            minHeight: '60px', 
+            position: 'relative', 
+            zIndex: 1,
+            ...paddingStyle
+          }}
           onClick={(e) => {
             // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
             // 如果点击的是子元素（有 data-element-id），允许事件继续传播
@@ -577,10 +589,15 @@ const TabContentRenderer = ({
       (child: any) => child && typeof child === 'object' && 'id' in child && 'type' in child
     ))
   
+  // 解析 contentPadding，支持多种格式：16px, 16px 8px, 16px 8px 4px 2px 等
+  const paddingStyle = contentPadding 
+    ? { padding: contentPadding }
+    : { padding: '8px' } // 默认值
+  
   return (
     <div
       ref={setTabDroppableRef}
-      className="relative min-h-[60px] p-2"
+      className="relative min-h-[60px]"
       style={{ 
         minHeight: '60px', 
         position: 'relative', 
@@ -588,6 +605,7 @@ const TabContentRenderer = ({
         width: '100%',
         // 确保拖拽区域可以接收事件
         pointerEvents: 'auto',
+        ...paddingStyle
       }}
       onClick={(e) => {
         // 只有当点击的是容器本身的空白区域时，才阻止事件冒泡
@@ -1456,6 +1474,7 @@ export function ElementRenderer({
             onUpdate={onUpdate}
             onDelete={onDelete}
             onCopy={onCopy}
+            contentPadding={element.props?.contentPadding}
           />
         ),
       }
