@@ -2346,10 +2346,96 @@ export function ElementRenderer({
       // Popover 需要包裹一个触发元素
       const popoverProps = { ...(element.props || {}) }
       const popoverTitle = popoverProps.title || 'Popover标题'
-      const popoverContent = popoverProps.content || 'Popover内容'
-      // 移除 title 和 content，因为 Popover 使用 content 属性
+      // 判断内容模式：如果有contentChildren，使用组件模式；否则使用文本模式
+      const hasContentChildren = popoverProps.contentChildren && Array.isArray(popoverProps.contentChildren) && popoverProps.contentChildren.length > 0
+      let popoverContent: React.ReactNode
+      
+      if (hasContentChildren) {
+        // 组件模式：渲染contentChildren中的组件
+        popoverContent = (
+          <div>
+            {popoverProps.contentChildren.map((child: Element) => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={(childId, updates) => {
+                  // 更新contentChildren中的组件
+                  const currentChildren = popoverProps.contentChildren || []
+                  const updatedChildren = currentChildren.map((c: Element) =>
+                    c.id === childId ? { ...c, ...updates } : c
+                  )
+                  onUpdate(element.id, {
+                    props: {
+                      ...element.props,
+                      contentChildren: updatedChildren,
+                    },
+                  })
+                }}
+                onDelete={(childId) => {
+                  // 从contentChildren中删除组件
+                  const currentChildren = popoverProps.contentChildren || []
+                  const updatedChildren = currentChildren.filter((c: Element) => c.id !== childId)
+                  onUpdate(element.id, {
+                    props: {
+                      ...element.props,
+                      contentChildren: updatedChildren.length > 0 ? updatedChildren : undefined,
+                    },
+                  })
+                }}
+                onCopy={onCopy ? (copiedElement) => {
+                  // 复制contentChildren中的组件
+                  const cloneElement = (el: Element): Element => {
+                    const newId = generateId()
+                    return {
+                      ...el,
+                      id: newId,
+                      children: el.children ? el.children.map(cloneElement) : undefined,
+                    }
+                  }
+                  const clonedElement = cloneElement(copiedElement)
+                  
+                  const currentChildren = popoverProps.contentChildren || []
+                  onUpdate(element.id, {
+                    props: {
+                      ...element.props,
+                      contentChildren: [...currentChildren, clonedElement],
+                    },
+                  })
+                } : undefined}
+                parentAutoFill={false}
+              />
+            ))}
+          </div>
+        )
+      } else {
+        // 文本模式：使用content文本
+        popoverContent = popoverProps.content || 'Popover内容'
+      }
+      
+      // 移除 title 和 content，因为 Popover 使用这些属性
       delete popoverProps.title
       delete popoverProps.content
+      delete popoverProps.contentChildren
+      
+      // 触发元素：使用children中的第一个元素，如果没有则使用默认按钮
+      const triggerElement = element.children && element.children.length > 0 ? (
+        element.children.map(child => (
+          <ElementRenderer
+            key={child.id}
+            element={child}
+            selectedElementId={selectedElementId}
+            onSelect={onSelect}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onCopy={onCopy}
+            parentAutoFill={false}
+          />
+        ))
+      ) : (
+        <Button type="primary">点击查看 Popover</Button>
+      )
       
       content = (
         <div ref={setNodeRef} onClick={handleClick} onContextMenu={handleContextMenu} style={style} className={element.className}>
