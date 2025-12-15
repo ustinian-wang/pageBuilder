@@ -510,6 +510,11 @@ export default function BuilderPage() {
             // 拖放到现有元素内（普通情况）
             const targetElementForNormal = findElementById(elements, over.id as string)
             if (targetElementForNormal) {
+              // 如果目标元素是 layout，不允许直接拖入，只能拖入其子 container 中
+              if (targetElementForNormal.type === 'layout') {
+                console.warn('[拖拽] layout 组件不允许直接拖入组件，请拖入其子 container 中')
+                return
+              }
               const newElements = addElementToParentInternal(elements, targetElementForNormal.id, newElement)
               updateElementsWithHistory(newElements)
             }
@@ -731,6 +736,11 @@ export default function BuilderPage() {
             // 拖放到现有元素内（普通情况）
             const targetElementForNormal = findElementById(elements, over.id as string)
             if (targetElementForNormal) {
+              // 如果目标元素是 layout，不允许直接拖入，只能拖入其子 container 中
+              if (targetElementForNormal.type === 'layout') {
+                console.warn('[拖拽] layout 组件不允许直接拖入组件，请拖入其子 container 中')
+                return
+              }
               const newElements = addElementToParentInternal(elements, targetElementForNormal.id, newElement)
               updateElementsWithHistory(newElements)
             }
@@ -943,6 +953,12 @@ export default function BuilderPage() {
         }
         
         // 普通情况：拖放到现有元素内
+        // 如果目标元素是 layout，不允许直接拖入，只能拖入其子 container 中
+        if (targetElement.type === 'layout') {
+          console.warn('[拖拽] layout 组件不允许直接拖入组件，请拖入其子 container 中')
+          return
+        }
+        
         // 先移除元素
         const elementsWithoutDragged = removeElement(elements)
         

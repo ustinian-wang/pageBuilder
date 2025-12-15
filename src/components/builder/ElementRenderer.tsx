@@ -933,8 +933,10 @@ export function ElementRenderer({
   onCopy,
   parentAutoFill = false,
 }: ElementRendererProps) {
+  // layout 组件不允许直接接收拖拽，只能拖入其子 container 中
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: element.id,
+    disabled: element.type === 'layout', // 禁用 layout 的拖拽接收
   })
 
   const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
