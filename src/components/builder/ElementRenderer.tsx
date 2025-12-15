@@ -1390,8 +1390,8 @@ export function ElementRenderer({
 
   // 编辑器辅助样式（不会保存到代码中）
   const editorStyle: React.CSSProperties = {
-    outline: isSelected ? '2px solid #3b82f6' : 'none',
-    outlineOffset: '2px',
+    outline: isSelected ? '1px solid #3b82f6' : 'none',
+    outlineOffset: '1px',
     opacity: isDragging ? 0.5 : 1,
   }
 

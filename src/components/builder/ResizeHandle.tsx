@@ -73,11 +73,11 @@ export function ResizeHandle({ position, onResize }: ResizeHandleProps) {
   const getPositionClasses = (pos: string): string => {
     switch (pos) {
       case 'right':
-        return 'top-0 right-0 h-full w-1 cursor-ew-resize'
+        return 'top-0 right-0 h-full w-[1px] cursor-ew-resize'
       case 'bottom':
-        return 'bottom-0 left-0 w-full h-1 cursor-ns-resize'
+        return 'bottom-0 left-0 w-full h-[1px] cursor-ns-resize'
       case 'bottom-right':
-        return 'bottom-0 right-0 w-3 h-3 cursor-nwse-resize'
+        return 'bottom-0 right-0 w-[1px] h-[1px] cursor-nwse-resize'
       default:
         return ''
     }
