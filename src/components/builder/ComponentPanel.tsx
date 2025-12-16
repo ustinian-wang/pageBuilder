@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { ElementType, Element, ComponentDefinition, CustomModule } from '@/lib/types'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
@@ -8,8 +8,9 @@ import { ElementList } from './ElementList'
 import { ElementRenderer } from './ElementRenderer'
 import { Tooltip } from 'antd'
 
-// 系统组件
-const systemComponents: ComponentDefinition[] = [
+// 统一的组件配置
+const allComponents: ComponentDefinition[] = [
+  // 系统组件
   { type: 'container', label: '容器', icon: '📦', category: 'system', description: '用于包裹其他组件的容器' },
   { type: 'layout', label: '布局', icon: '📐', category: 'system', description: '布局容器，包含两个子容器，允许添加模块' },
   { type: 'text', label: '文本', icon: '📝', category: 'system', description: '普通文本元素' },
@@ -22,10 +23,7 @@ const systemComponents: ComponentDefinition[] = [
   { type: 'divider', label: '分割线', icon: '➖', category: 'system', description: '水平分割线' },
   { type: 'list', label: '列表', icon: '📋', category: 'system', description: '有序或无序列表' },
   { type: 'form', label: '表单', icon: '📋', category: 'system', description: '表单容器' },
-]
-
-// Ant Design 组件
-const antdComponents: ComponentDefinition[] = [
+  // Ant Design 组件
   { type: 'a-button', label: 'Button', icon: '🔘', category: 'system', description: 'Ant Design 按钮' },
   { type: 'a-input', label: 'Input', icon: '📥', category: 'system', description: 'Ant Design 输入框' },
   { type: 'a-card', label: 'Card', icon: '🎴', category: 'system', description: 'Ant Design 卡片' },
@@ -56,6 +54,21 @@ const antdComponents: ComponentDefinition[] = [
   { type: 'a-alert', label: 'Alert', icon: '⚠️', category: 'system', description: 'Ant Design 警告提示' },
   { type: 'a-popover', label: 'Popover', icon: '💭', category: 'system', description: 'Ant Design 气泡卡片' },
 ]
+
+// 辅助函数：判断是否为 Ant Design 组件
+const isAntdComponent = (component: ComponentDefinition): boolean => {
+  return typeof component.type === 'string' && component.type.startsWith('a-')
+}
+
+// 过滤函数：获取系统组件
+const getSystemComponents = (): ComponentDefinition[] => {
+  return allComponents.filter(comp => !isAntdComponent(comp))
+}
+
+// 过滤函数：获取 Ant Design 组件
+const getAntdComponents = (): ComponentDefinition[] => {
+  return allComponents.filter(comp => isAntdComponent(comp))
+}
 
 // 自定义组件（从数据库加载）
 
@@ -254,22 +267,10 @@ function ComponentGroup({
     }
   }
 
-  // 过滤匹配的组件
-  const filteredComponents = useMemo(() => {
-    if (!searchQuery) return components
-    const query = searchQuery.toLowerCase()
-    return components.filter(
-      comp =>
-        comp.label.toLowerCase().includes(query) ||
-        comp.description?.toLowerCase().includes(query) ||
-        comp.type.toString().toLowerCase().includes(query)
-    )
-  }, [components, searchQuery])
-
   // 如果有搜索结果，自动展开（不改变保存的状态，只是临时展开）
-  const shouldShow = !isCollapsed || (searchQuery && filteredComponents.length > 0)
+  const shouldShow = !isCollapsed || (searchQuery && components.length > 0)
 
-  if (filteredComponents.length === 0) return null
+  if (components.length === 0) return null
 
   return (
     <div className="mb-6">
@@ -278,7 +279,7 @@ function ComponentGroup({
         className="w-full flex items-center justify-between px-1 py-2 text-xs font-semibold text-gray-500 uppercase hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
       >
         <span>
-          {title} ({filteredComponents.length})
+          {title} ({components.length})
         </span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -293,7 +294,7 @@ function ComponentGroup({
       </button>
       {shouldShow && (
         <div className="grid grid-cols-1 gap-2 mt-2">
-          {filteredComponents.map(component => (
+          {components.map(component => (
             <DraggableComponent 
               key={component.type} 
               component={component} 
@@ -457,40 +458,30 @@ export function ComponentPanel({ elements, selectedElementId, onSelect, onDelete
     }
   }
 
+  // 统一的组件过滤函数
+  const filterComponents = useCallback((components: ComponentDefinition[], query: string): ComponentDefinition[] => {
+    if (!query) return components
+    const lowerQuery = query.toLowerCase()
+    return components.filter(
+      comp =>
+        comp.label.toLowerCase().includes(lowerQuery) ||
+        comp.description?.toLowerCase().includes(lowerQuery) ||
+        comp.type.toString().toLowerCase().includes(lowerQuery)
+    )
+  }, [])
+
+  // 获取过滤后的组件
+  const systemComponents = useMemo(() => getSystemComponents(), [])
+  const antdComponents = useMemo(() => getAntdComponents(), [])
+  
+  const filteredSystemComponents = useMemo(() => filterComponents(systemComponents, searchQuery), [systemComponents, searchQuery, filterComponents])
+  const filteredAntdComponents = useMemo(() => filterComponents(antdComponents, searchQuery), [antdComponents, searchQuery, filterComponents])
+  const filteredCustomComponents = useMemo(() => filterComponents(customComponents, searchQuery), [customComponents, searchQuery, filterComponents])
+
   // 计算匹配的组件数量
-  const systemMatchCount = useMemo(() => {
-    if (!searchQuery) return systemComponents.length
-    const query = searchQuery.toLowerCase()
-    return systemComponents.filter(
-      comp =>
-        comp.label.toLowerCase().includes(query) ||
-        comp.description?.toLowerCase().includes(query) ||
-        comp.type.toLowerCase().includes(query)
-    ).length
-  }, [searchQuery])
-
-  const antdMatchCount = useMemo(() => {
-    if (!searchQuery) return antdComponents.length
-    const query = searchQuery.toLowerCase()
-    return antdComponents.filter(
-      comp =>
-        comp.label.toLowerCase().includes(query) ||
-        comp.description?.toLowerCase().includes(query) ||
-        comp.type.toLowerCase().includes(query)
-    ).length
-  }, [searchQuery])
-
-  const customMatchCount = useMemo(() => {
-    if (!searchQuery) return customComponents.length
-    const query = searchQuery.toLowerCase()
-    return customComponents.filter(
-      (comp: ComponentDefinition) =>
-        comp.label.toLowerCase().includes(query) ||
-        comp.description?.toLowerCase().includes(query) ||
-        comp.type.toString().toLowerCase().includes(query)
-    ).length
-  }, [searchQuery, customComponents])
-
+  const systemMatchCount = filteredSystemComponents.length
+  const antdMatchCount = filteredAntdComponents.length
+  const customMatchCount = filteredCustomComponents.length
   const totalMatchCount = systemMatchCount + antdMatchCount + customMatchCount
 
   return (
@@ -539,10 +530,10 @@ export function ComponentPanel({ elements, selectedElementId, onSelect, onDelete
 
             {/* 组件列表 */}
             <div className="flex-1 overflow-y-auto p-4">
-              {customComponents.length > 0 && (
+              {filteredCustomComponents.length > 0 && (
                 <ComponentGroup
                   title="自定义组件"
-                  components={customComponents}
+                  components={filteredCustomComponents}
                   searchQuery={searchQuery}
                   onPreview={setPreviewComponent}
                   onEdit={handleEdit}
@@ -551,12 +542,12 @@ export function ComponentPanel({ elements, selectedElementId, onSelect, onDelete
               )}
               <ComponentGroup
                 title="系统组件"
-                components={systemComponents}
+                components={filteredSystemComponents}
                 searchQuery={searchQuery}
               />
               <ComponentGroup
                 title="Ant Design 组件"
-                components={antdComponents}
+                components={filteredAntdComponents}
                 searchQuery={searchQuery}
               />
               {searchQuery && totalMatchCount === 0 && (
