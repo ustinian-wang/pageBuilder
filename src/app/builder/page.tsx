@@ -288,7 +288,7 @@ export default function BuilderPage() {
         props: getDefaultProps(componentType),
       }
       
-      // 如果是 layout 组件，自动创建2个 container 子元素，并设置默认样式
+      // 如果是 layout 组件，自动创建2个 container 子元素，并设置默认样式（left-fixed 布局）
       if (componentType === 'layout') {
         newElement.style = {
           display: 'flex',
@@ -300,11 +300,20 @@ export default function BuilderPage() {
             id: generateId(),
             type: 'container',
             props: {},
+            style: {
+              flex: '0 0 auto',
+              height: '100%',
+              width: '122px',
+            },
           },
           {
             id: generateId(),
             type: 'container',
             props: {},
+            style: {
+              height: '100%',
+              flex: '1 1 auto',
+            },
           },
         ]
       }
@@ -539,7 +548,7 @@ export default function BuilderPage() {
       }
       const newElement = cloneElement(elementData)
       
-      // 如果自定义模块是 layout 类型但没有 children，自动创建2个 container 子元素，并设置默认样式
+      // 如果自定义模块是 layout 类型但没有 children，自动创建2个 container 子元素，并设置默认样式（left-fixed 布局）
       if (newElement.type === 'layout' && (!newElement.children || newElement.children.length === 0)) {
         newElement.style = {
           ...newElement.style,
@@ -552,11 +561,20 @@ export default function BuilderPage() {
             id: generateId(),
             type: 'container',
             props: {},
+            style: {
+              flex: '0 0 auto',
+              width: '122px',
+              height: '100%',
+            },
           },
           {
             id: generateId(),
             type: 'container',
             props: {},
+            style: {
+              flex: '1 1 auto',
+              height: '100%',
+            },
           },
         ]
       }
