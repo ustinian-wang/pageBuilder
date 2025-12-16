@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
+import dayjs from 'dayjs'
 import { Element, FormElementProps, FormFieldConfig, FormFieldDependency } from '@/lib/types'
 import { generateId } from '@/lib/utils'
-import { Input, Select, Radio, Checkbox, Switch } from 'antd'
+import { Input, Select, Radio, Checkbox, Switch, DatePicker, InputNumber } from 'antd'
 
 interface FormRendererProps {
   element: Element
@@ -231,176 +232,131 @@ export function FormRenderer({
   const renderControl = (field: FormFieldConfig, value: any, disabled: boolean) => {
     const baseProps = { ...(field.componentProps || {}) }
     delete (baseProps as any).defaultValue
-    const commonInputProps = {
-      className: 'w-full border border-gray-300 rounded px-3 py-2',
-      placeholder: field.placeholder,
-      disabled,
-      ...baseProps,
-    }
+    const { style: customStyle, options: customOptions, ...restProps } = baseProps
+    const mergedStyle = (customStyle as React.CSSProperties) || {}
+    const deriveOptions = () =>
+      (Array.isArray(customOptions) ? customOptions : (field.options || []).map(opt => ({ label: opt.label, value: opt.value })))
 
     switch (field.component) {
       case 'textarea':
         return (
-          <textarea
-            {...commonInputProps}
+          <Input.TextArea
+            {...restProps}
+            disabled={disabled}
+            style={{ width: '100%', ...mergedStyle }}
             value={value ?? ''}
+            placeholder={field.placeholder}
             onChange={e => handleFieldValueChange(field, e.target.value)}
           />
         )
       case 'select':
-        return (
-          <select
-            {...commonInputProps}
-            value={value ?? ''}
-            onChange={e => handleFieldValueChange(field, e.target.value)}
-          >
-            <option value="">请选择</option>
-            {(field.options || []).map(opt => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        )
-      case 'radio':
-        return (
-          <div className="flex flex-wrap gap-4">
-            {(field.options || []).map(opt => (
-              <label key={opt.value} className="flex items-center gap-1 text-sm text-gray-700">
-                <input
-                  type="radio"
-                  name={field.id}
-                  value={opt.value}
-                  checked={value === opt.value}
-                  disabled={disabled}
-                  onChange={e => handleFieldValueChange(field, e.target.value)}
-                />
-                {opt.label}
-              </label>
-            ))}
-          </div>
-        )
-      case 'checkbox':
-        return (
-          <div className="flex flex-wrap gap-4">
-            {(field.options || []).map(opt => {
-              const checked = Array.isArray(value) ? value.includes(opt.value) : false
-              return (
-                <label key={opt.value} className="flex items-center gap-1 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    value={opt.value}
-                    checked={checked}
-                    disabled={disabled}
-                    onChange={e => {
-                      const current = Array.isArray(value) ? [...value] : []
-                      if (e.target.checked) {
-                        if (!current.includes(opt.value)) current.push(opt.value)
-                      } else {
-                        const idx = current.indexOf(opt.value)
-                        if (idx > -1) current.splice(idx, 1)
-                      }
-                      handleFieldValueChange(field, current)
-                    }}
-                  />
-                  {opt.label}
-                </label>
-              )
-            })}
-          </div>
-        )
-      case 'date':
-        return (
-          <input
-            {...commonInputProps}
-            type="date"
-            value={value ?? ''}
-            onChange={e => handleFieldValueChange(field, e.target.value)}
-          />
-        )
-      case 'number':
-        return (
-          <input
-            {...commonInputProps}
-            type="number"
-            value={value ?? ''}
-            onChange={e => handleFieldValueChange(field, e.target.value)}
-          />
-        )
-      case 'switch':
-        return (
-          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={!!value}
-              disabled={disabled}
-              onChange={e => handleFieldValueChange(field, e.target.checked)}
-            />
-            {field.placeholder || '切换'}
-          </label>
-        )
-      case 'a-input':
-        return (
-          <Input
-            {...baseProps}
-            disabled={disabled}
-            value={value ?? ''}
-            placeholder={field.placeholder}
-            onChange={e => handleFieldValueChange(field, e.target.value)}
-          />
-        )
       case 'a-select':
-        return (
-          <Select
-            {...baseProps}
-            disabled={disabled}
-            style={{ width: '100%' }}
-            value={value ?? undefined}
-            placeholder={field.placeholder}
-            onChange={val => handleFieldValueChange(field, val)}
-            options={(field.options || []).map(opt => ({ label: opt.label, value: opt.value }))}
-          />
-        )
+        {
+          const options = deriveOptions()
+          return (
+            <Select
+              {...restProps}
+              disabled={disabled}
+              style={{ width: '100%', ...mergedStyle }}
+              value={value === '' ? undefined : value}
+              placeholder={field.placeholder}
+              options={options}
+              onChange={val => handleFieldValueChange(field, val)}
+            />
+          )
+        }
+      case 'radio':
       case 'a-radio':
-        return (
-          <Radio.Group
-            {...baseProps}
-            disabled={disabled}
-            value={value}
-            onChange={e => handleFieldValueChange(field, e.target.value)}
-          >
-            {(field.options || []).map(opt => (
-              <Radio key={opt.value} value={opt.value}>
-                {opt.label}
-              </Radio>
-            ))}
-          </Radio.Group>
-        )
+        {
+          const options = deriveOptions()
+          return (
+            <Radio.Group
+              {...restProps}
+              disabled={disabled}
+              value={value}
+              onChange={e => handleFieldValueChange(field, e.target.value)}
+            >
+              {(options || []).map(opt => (
+                <Radio key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Radio>
+              ))}
+            </Radio.Group>
+          )
+        }
+      case 'checkbox':
       case 'a-checkbox':
-        return (
-          <Checkbox.Group
-            {...baseProps}
-            disabled={disabled}
-            options={(field.options || []).map(opt => ({ label: opt.label, value: opt.value }))}
-            value={Array.isArray(value) ? value : []}
-            onChange={vals => handleFieldValueChange(field, vals)}
-          />
-        )
+        {
+          const options = deriveOptions()
+          return (
+            <Checkbox.Group
+              {...restProps}
+              disabled={disabled}
+              style={{ width: '100%', ...mergedStyle }}
+              options={options || []}
+              value={Array.isArray(value) ? value : []}
+              onChange={vals => handleFieldValueChange(field, vals)}
+            />
+          )
+        }
+      case 'date':
+        {
+          const format = typeof restProps.format === 'string' ? restProps.format : 'YYYY-MM-DD'
+          const normalizedValue =
+            value && dayjs.isDayjs(value) ? value : value ? dayjs(value) : undefined
+          const pickerValue = normalizedValue && normalizedValue.isValid() ? normalizedValue : undefined
+          return (
+            <DatePicker
+              {...restProps}
+              disabled={disabled}
+              style={{ width: '100%', ...mergedStyle }}
+              value={pickerValue}
+              placeholder={field.placeholder}
+              onChange={date => handleFieldValueChange(field, date ? date.format(format) : '')}
+            />
+          )
+        }
+      case 'number':
+        {
+          const numericValue =
+            typeof value === 'number'
+              ? value
+              : value === '' || value === null || value === undefined
+              ? undefined
+              : Number(value)
+          return (
+            <InputNumber
+              {...restProps}
+              disabled={disabled}
+              style={{ width: '100%', ...mergedStyle }}
+              value={numericValue}
+              placeholder={field.placeholder}
+              onChange={val => handleFieldValueChange(field, typeof val === 'number' ? val : '')}
+            />
+          )
+        }
+      case 'switch':
       case 'a-switch':
         return (
-          <Switch
-            {...baseProps}
-            checked={!!value}
-            disabled={disabled}
-            onChange={checked => handleFieldValueChange(field, checked)}
-          />
+          <div className="flex items-center gap-2">
+            <Switch
+              {...restProps}
+              style={mergedStyle}
+              checked={!!value}
+              disabled={disabled}
+              onChange={checked => handleFieldValueChange(field, checked)}
+            />
+            {field.placeholder && <span className="text-sm text-gray-600">{field.placeholder}</span>}
+          </div>
         )
       default:
         return (
-          <input
-            {...commonInputProps}
-            type="text"
+          <Input
+            {...restProps}
+            disabled={disabled}
+            style={{ width: '100%', ...mergedStyle }}
             value={value ?? ''}
+            placeholder={field.placeholder}
             onChange={e => handleFieldValueChange(field, e.target.value)}
           />
         )
