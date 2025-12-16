@@ -101,7 +101,7 @@ export interface ComponentDefinition {
   type: ElementType | string // 自定义模块使用字符串类型
   label: string
   icon: string
-  category: 'system' | 'custom'
+  category: 'system' | 'custom' | 'composite'
   description?: string
   elementData?: Element // 自定义模块的元素数据
   moduleId?: string // 自定义模块的ID（仅自定义模块有此字段）
@@ -135,4 +135,3 @@ export interface UpdateCustomModuleRequest {
   description?: string
   element?: Element
 }
-

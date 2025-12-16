@@ -6,6 +6,7 @@ import { Element, ElementType, ComponentDefinition } from '@/lib/types'
 import { ResizeHandle } from './ResizeHandle'
 import { ComponentItem } from './ComponentItem'
 import { generateId } from '@/lib/utils'
+import { compositeModules } from '@/lib/composite-modules'
 // Ant Design 组件导入
 import {
   Button,
@@ -279,7 +280,8 @@ const TabContentRenderer = ({
   // 组件选择对话框状态
   const [showComponentModal, setShowComponentModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [customComponents, setCustomComponents] = useState<Array<{ type: string; label: string; icon: string; description?: string; elementData?: Element; moduleId?: string }>>([])
+  const [customComponents, setCustomComponents] = useState<ComponentDefinition[]>([])
+  const compositeComponents = useMemo(() => compositeModules, [])
   
   // 加载自定义模块
   useEffect(() => {
@@ -295,6 +297,7 @@ const TabContentRenderer = ({
             description: m.description,
             elementData: m.element,
             moduleId: m.id,
+            category: 'custom' as const,
           }))
           setCustomComponents(modules)
         }
@@ -337,6 +340,17 @@ const TabContentRenderer = ({
     )
   }, [searchQuery])
   
+  const filteredCompositeComponents = useMemo(() => {
+    if (!searchQuery) return compositeComponents
+    const query = searchQuery.toLowerCase()
+    return compositeComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery, compositeComponents])
+  
   const filteredCustomComponents = useMemo(() => {
     if (!searchQuery) return customComponents
     const query = searchQuery.toLowerCase()
@@ -348,20 +362,24 @@ const TabContentRenderer = ({
     )
   }, [searchQuery, customComponents])
   
-  const totalMatchCount = filteredSystemComponents.length + filteredAntdComponents.length + filteredCustomComponents.length
+  const totalMatchCount =
+    filteredSystemComponents.length +
+    filteredAntdComponents.length +
+    filteredCompositeComponents.length +
+    filteredCustomComponents.length
   
   // 添加组件到 tab content
   const handleAddComponent = (componentType: ElementType | string, elementData?: Element, moduleId?: string) => {
     let newElement: Element
     
-    if (elementData && moduleId) {
-      // 自定义模块：深拷贝并生成新ID
+    if (elementData) {
+      // 模块类组件：深拷贝并生成新ID
       const cloneElement = (el: Element): Element => {
         const newId = generateId()
         return {
           ...el,
           id: newId,
-          moduleId: moduleId,
+          moduleId: el.moduleId || moduleId,
           children: el.children ? el.children.map(cloneElement) : undefined,
         }
       }
@@ -874,6 +892,26 @@ const TabContentRenderer = ({
                   </div>
               </div>
             )}
+
+            {/* 复合组件 */}
+            {filteredCompositeComponents.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                  复合组件 ({filteredCompositeComponents.length})
+                </h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    {filteredCompositeComponents.map((comp) => (
+                      <ComponentItem
+                        key={comp.type}
+                        component={comp}
+                        mode="click"
+                        onClick={handleAddComponent}
+                        theme="blue"
+                      />
+                    ))}
+                  </div>
+              </div>
+            )}
             
             {/* Ant Design 组件 */}
             {filteredAntdComponents.length > 0 && (
@@ -951,7 +989,8 @@ export function ElementRenderer({
   // 组件选择弹窗状态（用于容器组件）
   const [showComponentModal, setShowComponentModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [customComponents, setCustomComponents] = useState<Array<{ type: string; label: string; icon: string; description?: string; elementData?: Element; moduleId?: string }>>([])
+  const [customComponents, setCustomComponents] = useState<ComponentDefinition[]>([])
+  const compositeComponents = useMemo(() => compositeModules, [])
   
   // 加载自定义模块
   useEffect(() => {
@@ -967,6 +1006,7 @@ export function ElementRenderer({
             description: m.description,
             elementData: m.element,
             moduleId: m.id,
+            category: 'custom' as const,
           }))
           setCustomComponents(modules)
         }
@@ -1009,6 +1049,17 @@ export function ElementRenderer({
     )
   }, [searchQuery])
   
+  const filteredCompositeComponents = useMemo(() => {
+    if (!searchQuery) return compositeComponents
+    const query = searchQuery.toLowerCase()
+    return compositeComponents.filter(
+      comp =>
+        comp.label.toLowerCase().includes(query) ||
+        comp.description?.toLowerCase().includes(query) ||
+        comp.type.toLowerCase().includes(query)
+    )
+  }, [searchQuery, compositeComponents])
+
   const filteredCustomComponents = useMemo(() => {
     if (!searchQuery) return customComponents
     const query = searchQuery.toLowerCase()
@@ -1019,21 +1070,25 @@ export function ElementRenderer({
         comp.type.toLowerCase().includes(query)
     )
   }, [searchQuery, customComponents])
-  
-  const totalMatchCount = filteredSystemComponents.length + filteredAntdComponents.length + filteredCustomComponents.length
+
+  const totalMatchCount =
+    filteredSystemComponents.length +
+    filteredAntdComponents.length +
+    filteredCompositeComponents.length +
+    filteredCustomComponents.length
   
   // 添加组件到容器
   const handleAddComponentToContainer = (componentType: ElementType | string, elementData?: Element, moduleId?: string) => {
     let newElement: Element
     
-    if (elementData && moduleId) {
-      // 自定义模块：深拷贝并生成新ID
+    if (elementData) {
+      // 模块类组件：深拷贝并生成新ID
       const cloneElement = (el: Element): Element => {
         const newId = generateId()
         return {
           ...el,
           id: newId,
-          moduleId: moduleId,
+          moduleId: el.moduleId || moduleId,
           children: el.children ? el.children.map(cloneElement) : undefined,
         }
       }
@@ -2933,6 +2988,25 @@ export function ElementRenderer({
                   </div>
                 </div>
               )}
+
+              {/* 复合组件 */}
+              {filteredCompositeComponents.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
+                    复合组件 ({filteredCompositeComponents.length})
+                  </h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    {filteredCompositeComponents.map((comp) => (
+                      <ComponentItem
+                        key={comp.type}
+                        component={comp}
+                        onClick={handleAddComponentToContainer}
+                        theme="blue"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {/* 系统组件 */}
               {filteredSystemComponents.length > 0 && (
@@ -2986,5 +3060,3 @@ export function ElementRenderer({
     </>
   )
 }
-
-

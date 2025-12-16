@@ -13,7 +13,7 @@ type ComponentItemData = ComponentDefinition | {
   description?: string
   elementData?: Element
   moduleId?: string
-  category?: 'system' | 'custom'
+  category?: 'system' | 'custom' | 'composite'
 }
 
 interface ComponentItemProps {
@@ -43,13 +43,15 @@ export const ComponentItem = ({
   layout = mode === 'drag' ? 'horizontal' : 'vertical'
 }: ComponentItemProps) => {
   const isAntdComponent = typeof component.type === 'string' && component.type.startsWith('a-')
-  const isCustom = ('moduleId' in component && component.moduleId) || component.category === 'custom'
+  const hasElementData = 'elementData' in component && !!component.elementData
+  const isCustomCategory = component.category === 'custom'
+  const isModuleLike = hasElementData
   
   // 确定主题颜色
-  const finalTheme = theme === 'green' || isCustom ? 'green' : 'blue'
+  const finalTheme = theme === 'green' || isCustomCategory ? 'green' : 'blue'
   
   // 拖拽模式：使用 useDraggable
-  const dragId = isCustom 
+  const dragId = isModuleLike
     ? `custom-module-${component.type}` 
     : `component-${component.type}`
   
@@ -57,7 +59,7 @@ export const ComponentItem = ({
     id: dragId,
     enabled: mode === 'drag',
     data: {
-      type: isCustom ? 'custom-module' : 'component',
+      type: isModuleLike ? 'custom-module' : 'component',
       componentType: component.type,
       elementData: 'elementData' in component ? component.elementData : undefined,
       moduleId: 'moduleId' in component ? component.moduleId : undefined,
@@ -83,9 +85,9 @@ export const ComponentItem = ({
 
   const handleClick = () => {
     if (mode === 'click' && onClick) {
-      if ('elementData' in component && 'moduleId' in component && component.elementData && component.moduleId) {
-        // 自定义组件：传递 elementData 和 moduleId
-        onClick(component.type, component.elementData, component.moduleId)
+      if ('elementData' in component && component.elementData) {
+        // 模块型组件：传递 elementData，并附带 moduleId（如果存在）
+        onClick(component.type, component.elementData, 'moduleId' in component ? component.moduleId : undefined)
       } else {
         // 系统组件或 Ant Design 组件：只传递 type
         onClick(component.type)
@@ -95,7 +97,7 @@ export const ComponentItem = ({
 
   const handlePreview = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (onPreview && isCustom && 'category' in component) {
+    if (onPreview && isModuleLike) {
       onPreview(component as ComponentDefinition)
     }
   }
@@ -122,7 +124,7 @@ export const ComponentItem = ({
           </div>
         )}
       </div>
-      {isCustom && mode === 'drag' && (
+      {isModuleLike && mode === 'drag' && (
         <div 
           className="flex items-center gap-1 flex-shrink-0"
           onClick={(e) => e.stopPropagation()}
@@ -159,13 +161,11 @@ export const ComponentItem = ({
               </svg>
             </button>
           )}
-          {onEdit && (
+          {onEdit && isCustomCategory && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                if ('category' in component) {
-                  onEdit(component as ComponentDefinition)
-                }
+                onEdit(component as ComponentDefinition)
               }}
               className="p-1 text-green-600 hover:bg-green-50 rounded"
               title="编辑"
@@ -188,13 +188,11 @@ export const ComponentItem = ({
               </svg>
             </button>
           )}
-          {onDelete && (
+          {onDelete && isCustomCategory && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                if ('category' in component) {
-                  onDelete(component as ComponentDefinition)
-                }
+                onDelete(component as ComponentDefinition)
               }}
               className="p-1 text-red-600 hover:bg-red-50 rounded"
               title="删除"
@@ -259,4 +257,3 @@ export const ComponentItem = ({
     )
   }
 }
-

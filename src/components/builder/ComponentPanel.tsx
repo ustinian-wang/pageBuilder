@@ -2,13 +2,14 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { ElementType, Element, ComponentDefinition, CustomModule } from '@/lib/types'
+import { compositeModules } from '@/lib/composite-modules'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { ElementList } from './ElementList'
 import { ElementRenderer } from './ElementRenderer'
 import { ComponentItem } from './ComponentItem'
 
 // 统一的组件配置
-const allComponents: ComponentDefinition[] = [
+const baseComponents: ComponentDefinition[] = [
   // 系统组件
   { type: 'container', label: '容器', icon: '📦', category: 'system', description: '用于包裹其他组件的容器' },
   { type: 'layout', label: '布局', icon: '📐', category: 'system', description: '布局容器，包含两个子容器，允许添加模块' },
@@ -54,6 +55,8 @@ const allComponents: ComponentDefinition[] = [
   { type: 'a-popover', label: 'Popover', icon: '💭', category: 'system', description: 'Ant Design 气泡卡片' },
 ]
 
+const allComponents: ComponentDefinition[] = [...baseComponents, ...compositeModules]
+
 // 辅助函数：判断是否为 Ant Design 组件
 const isAntdComponent = (component: ComponentDefinition): boolean => {
   return typeof component.type === 'string' && component.type.startsWith('a-')
@@ -61,12 +64,16 @@ const isAntdComponent = (component: ComponentDefinition): boolean => {
 
 // 过滤函数：获取系统组件
 const getSystemComponents = (): ComponentDefinition[] => {
-  return allComponents.filter(comp => !isAntdComponent(comp))
+  return baseComponents.filter(comp => !isAntdComponent(comp) && comp.category === 'system')
 }
 
 // 过滤函数：获取 Ant Design 组件
 const getAntdComponents = (): ComponentDefinition[] => {
-  return allComponents.filter(comp => isAntdComponent(comp))
+  return baseComponents.filter(comp => isAntdComponent(comp))
+}
+
+const getCompositeComponents = (): ComponentDefinition[] => {
+  return compositeModules
 }
 
 // 自定义组件（从数据库加载）
@@ -314,16 +321,19 @@ export function ComponentPanel({ elements, selectedElementId, onSelect, onDelete
   // 获取过滤后的组件
   const systemComponents = useMemo(() => getSystemComponents(), [])
   const antdComponents = useMemo(() => getAntdComponents(), [])
+  const compositeComponents = useMemo(() => getCompositeComponents(), [])
   
   const filteredSystemComponents = useMemo(() => filterComponents(systemComponents, searchQuery), [systemComponents, searchQuery, filterComponents])
   const filteredAntdComponents = useMemo(() => filterComponents(antdComponents, searchQuery), [antdComponents, searchQuery, filterComponents])
+  const filteredCompositeComponents = useMemo(() => filterComponents(compositeComponents, searchQuery), [compositeComponents, searchQuery, filterComponents])
   const filteredCustomComponents = useMemo(() => filterComponents(customComponents, searchQuery), [customComponents, searchQuery, filterComponents])
 
   // 计算匹配的组件数量
   const systemMatchCount = filteredSystemComponents.length
   const antdMatchCount = filteredAntdComponents.length
+  const compositeMatchCount = filteredCompositeComponents.length
   const customMatchCount = filteredCustomComponents.length
-  const totalMatchCount = systemMatchCount + antdMatchCount + customMatchCount
+  const totalMatchCount = systemMatchCount + antdMatchCount + compositeMatchCount + customMatchCount
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
@@ -385,6 +395,12 @@ export function ComponentPanel({ elements, selectedElementId, onSelect, onDelete
                 title="系统组件"
                 components={filteredSystemComponents}
                 searchQuery={searchQuery}
+              />
+              <ComponentGroup
+                title="复合组件"
+                components={filteredCompositeComponents}
+                searchQuery={searchQuery}
+                onPreview={setPreviewComponent}
               />
               <ComponentGroup
                 title="Ant Design 组件"
@@ -661,4 +677,3 @@ export function ComponentPanel({ elements, selectedElementId, onSelect, onDelete
     </div>
   )
 }
-
