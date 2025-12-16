@@ -92,15 +92,21 @@ function DraggableComponent({
     }
   }
 
+  // 判断是否为 Ant Design 组件（type 以 'a-' 开头）
+  const isAntdComponent = typeof component.type === 'string' && component.type.startsWith('a-')
+  
   return (
     <div
       ref={setNodeRef}
       {...(component.category === 'custom' ? { ...listeners, ...attributes } : { ...listeners, ...attributes })}
       className={`
-        p-3 bg-white border border-gray-200 rounded
-        hover:border-blue-400 hover:shadow-md transition-all
+        p-3 rounded transition-all
         ${isDragging ? 'opacity-30' : ''}
         cursor-move
+        ${isAntdComponent 
+          ? 'bg-blue-50 border border-blue-200 hover:border-blue-400 hover:bg-blue-100 hover:shadow-md' 
+          : 'bg-white border border-gray-200 hover:border-blue-400 hover:shadow-md'
+        }
       `}
       title={component.description}
     >
@@ -108,10 +114,14 @@ function DraggableComponent({
         <span className="text-xl flex-shrink-0">{component.icon}</span>
         <div className="flex-1 min-w-0">
           <Tooltip title={component.label} placement="top">
-            <div className="text-sm font-medium truncate">{component.label}</div>
+            <div className={`text-sm font-medium truncate ${isAntdComponent ? 'text-blue-700' : 'text-gray-900'}`}>
+              {component.label}
+            </div>
           </Tooltip>
           {component.description && (
-            <div className="text-xs text-gray-500 truncate mt-0.5">{component.description}</div>
+            <div className={`text-xs truncate mt-0.5 ${isAntdComponent ? 'text-blue-600' : 'text-gray-500'}`}>
+              {component.description}
+            </div>
           )}
         </div>
         {component.category === 'custom' && (
