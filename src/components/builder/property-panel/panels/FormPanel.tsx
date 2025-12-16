@@ -41,6 +41,7 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
       labelWrap: element.props?.labelWrap !== false,
       labelEllipsis: element.props?.labelEllipsis === true,
       labelMinHeight: element.props?.labelMinHeight ?? 32,
+      labelColon: element.props?.labelColon !== false,
       groups: element.props?.groups || [],
       layout: element.props?.layout || 'horizontal',
       rowGap: element.props?.rowGap ?? 16,
@@ -312,6 +313,14 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
             onChange={e => updateFormProps({ labelEllipsis: e.target.checked })}
           />
           文本省略
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={formProps.labelColon !== false}
+            onChange={e => updateFormProps({ labelColon: e.target.checked })}
+          />
+          标签冒号
         </label>
       </div>
 

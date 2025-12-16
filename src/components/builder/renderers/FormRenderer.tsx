@@ -123,6 +123,7 @@ export function FormRenderer({
 
   const labelWidth = formProps.labelWidth ?? 122
   const labelMinHeight = formProps.labelMinHeight ?? 32
+  const showLabelColon = formProps.labelColon !== false
   const layoutDirection = formProps.layout === 'vertical' ? 'column' : 'row'
   const rowGap = formProps.rowGap ?? 16
   const fieldGap = formProps.fieldGap ?? 24
@@ -446,6 +447,13 @@ export function FormRenderer({
             if (!visible) return null
             const isEditingLabel = editingLabelId === field.id
             const labelVisible = field.showLabel !== false
+            const rawLabel = field.label || ''
+            const trimmedLabel = rawLabel.trim()
+            let renderedLabel = rawLabel
+            if (showLabelColon && trimmedLabel) {
+              const hasColon = trimmedLabel.endsWith('：') || trimmedLabel.endsWith(':')
+              renderedLabel = hasColon ? trimmedLabel : `${trimmedLabel}：`
+            }
             const labelStyles: React.CSSProperties = {
               width: layoutDirection === 'row' ? `${labelWidth}px` : '100%',
               flexShrink: 0,
@@ -502,7 +510,7 @@ export function FormRenderer({
                           *
                         </span>
                       )}
-                      <span>{field.label}</span>
+                      <span>{renderedLabel || rawLabel}</span>
                     </span>
                   )}
                 </div>

@@ -131,6 +131,7 @@ export interface FormElementProps {
   labelWrap?: boolean
   labelEllipsis?: boolean
   labelMinHeight?: number
+  labelColon?: boolean
   groups?: FormGroup[]
   layout?: 'horizontal' | 'vertical'
   rowGap?: number
