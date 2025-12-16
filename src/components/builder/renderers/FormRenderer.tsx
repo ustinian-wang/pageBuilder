@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import { Element, FormElementProps, FormFieldConfig, FormFieldDependency } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 import { Input, Select, Radio, Checkbox, Switch, DatePicker, InputNumber } from 'antd'
+import { FORM_FIELD_FOCUS_EVENT, FormFieldFocusDetail } from '@/lib/events'
 
 interface FormRendererProps {
   element: Element
@@ -87,6 +88,7 @@ export function FormRenderer({
   const [formValues, setFormValues] = useState<Record<string, any>>({})
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null)
   const [labelDraft, setLabelDraft] = useState<string>('')
+  const [activeFieldId, setActiveFieldId] = useState<string | null>(null)
 
   const formFields: FormFieldConfig[] = useMemo(() => {
     return Array.isArray(formProps.fields) ? formProps.fields : []
@@ -121,6 +123,33 @@ export function FormRenderer({
       return changed ? next : prev
     })
   }, [formFieldsKey, element.id])
+
+  useEffect(() => {
+    const handleFieldFocus = (event: Event) => {
+      const customEvent = event as CustomEvent<FormFieldFocusDetail>
+      const detail = customEvent.detail
+      if (!detail || !detail.elementId) {
+        return
+      }
+
+      if (detail.elementId === element.id) {
+        setActiveFieldId(detail.fieldId || null)
+      } else if (detail.elementId !== element.id && detail.fieldId) {
+        setActiveFieldId(null)
+      }
+    }
+
+    window.addEventListener(FORM_FIELD_FOCUS_EVENT, handleFieldFocus as EventListener)
+    return () => {
+      window.removeEventListener(FORM_FIELD_FOCUS_EVENT, handleFieldFocus as EventListener)
+    }
+  }, [element.id])
+
+  useEffect(() => {
+    if (activeFieldId && !formFields.some(field => field.id === activeFieldId)) {
+      setActiveFieldId(null)
+    }
+  }, [formFields, activeFieldId])
 
   const labelWidth = formProps.labelWidth ?? 122
   const labelMinHeight = formProps.labelMinHeight ?? 32
@@ -163,12 +192,14 @@ export function FormRenderer({
       dependencies: [],
     }
     updateFormFields([...formFields, newField])
+    setActiveFieldId(newField.id)
   }
 
   const handleStartLabelEdit = (field: FormFieldConfig, event: React.MouseEvent) => {
     event.stopPropagation()
     setEditingLabelId(field.id)
     setLabelDraft(field.label || '')
+    setActiveFieldId(field.id)
   }
 
   const commitLabelEdit = (fieldId: string, nextLabel?: string) => {
@@ -363,6 +394,12 @@ export function FormRenderer({
     }
   }
 
+  const activeFieldLabel = useMemo(() => {
+    if (!activeFieldId) return ''
+    const found = formFields.find(field => field.id === activeFieldId)
+    return found?.label || ''
+  }, [activeFieldId, formFields])
+
   const sections: Array<{ id: string; group?: { label: string; description?: string } | null; fields: FormFieldConfig[] }> = []
   const groupMap = new Map<string, FormFieldConfig[]>()
   formFields.forEach(field => {
@@ -390,6 +427,13 @@ export function FormRenderer({
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
+      {activeFieldId && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
+          <div className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow-lg opacity-90">
+            正在配置：{activeFieldLabel || '表单项'}
+          </div>
+        </div>
+      )}
       {sections.map(section => (
         <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: `${fieldGap}px` }}>
           {section.group && (
@@ -403,6 +447,7 @@ export function FormRenderer({
             if (!visible) return null
             const isEditingLabel = editingLabelId === field.id
             const labelVisible = field.showLabel !== false
+            const isActiveField = activeFieldId === field.id
             const rawLabel = field.label || ''
             const trimmedLabel = rawLabel.trim()
             let renderedLabel = rawLabel
@@ -425,13 +470,22 @@ export function FormRenderer({
               alignItems: layoutDirection === 'row' ? 'center' : 'flex-start',
               opacity: labelVisible ? 1 : 0.5,
             }
+            const rowStyles: React.CSSProperties = {
+              display: 'flex',
+              gap: '12px',
+              flexDirection: layoutDirection,
+              alignItems: layoutDirection === 'row' ? 'center' : 'flex-start',
+              padding: '8px',
+              borderRadius: '12px',
+              border: isActiveField ? '1px solid #3b82f6' : '1px solid transparent',
+              boxShadow: isActiveField ? '0 10px 20px rgba(59, 130, 246, 0.15)' : undefined,
+              backgroundColor: isActiveField ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+              transition: 'all 0.2s ease',
+              width: '100%',
+            }
             const value = field.id in formValues ? formValues[field.id] : getDefaultFormFieldValue(field)
             return (
-              <div
-                key={field.id}
-                className="flex"
-                style={{ gap: '12px', flexDirection: layoutDirection, alignItems: layoutDirection === 'row' ? 'center' : 'flex-start' }}
-              >
+              <div key={field.id} className="flex" style={rowStyles} data-form-field-id={field.id}>
                 <div style={labelStyles} onDoubleClick={e => handleStartLabelEdit(field, e)}>
                   {isEditingLabel ? (
                     <input

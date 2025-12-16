@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import { TabsContent } from '@/components/ui/Tabs'
 import type { FormElementProps, FormFieldConfig, FormFieldDependency, FormValidationRule, FormGroup } from '@/lib/types'
 import { PanelProps } from './types'
 import { PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
 import { generateId } from '@/lib/utils'
+import { FORM_FIELD_FOCUS_EVENT, FormFieldFocusDetail } from '@/lib/events'
 
 interface FormPanelProps extends PanelProps {}
 
@@ -34,6 +35,8 @@ const validationOptions: Array<{ value: FormValidationRule['type']; label: strin
 ]
 
 export function FormPanel({ element, onUpdate }: FormPanelProps) {
+  const [activeFieldId, setActiveFieldId] = useState<string | null>(null)
+
   const formProps = useMemo<FormElementProps>(() => {
     return {
       fields: element.props?.fields || [],
@@ -55,6 +58,39 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
       actionsBackground: element.props?.actionsBackground || '',
     }
   }, [element.props])
+
+  const announceActiveField = useCallback(
+    (fieldId: string | null) => {
+      const detail: FormFieldFocusDetail = {
+        elementId: element.id,
+        fieldId,
+      }
+      window.dispatchEvent(new CustomEvent<FormFieldFocusDetail>(FORM_FIELD_FOCUS_EVENT, { detail }))
+    },
+    [element.id],
+  )
+
+  const setPanelActiveField = useCallback(
+    (fieldId: string | null) => {
+      setActiveFieldId(fieldId)
+      announceActiveField(fieldId)
+    },
+    [announceActiveField],
+  )
+
+  useEffect(() => {
+    setActiveFieldId(null)
+    announceActiveField(null)
+
+    const currentElementId = element.id
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<FormFieldFocusDetail>(FORM_FIELD_FOCUS_EVENT, {
+          detail: { elementId: currentElementId, fieldId: null },
+        }),
+      )
+    }
+  }, [element.id, announceActiveField])
 
   const updateFormProps = (patch: Partial<FormElementProps>) => {
     onUpdate({
@@ -119,9 +155,24 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
     updateFormProps({ groups: newGroups, fields: newFields })
   }
 
+  const handleFieldPanelBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget as HTMLElement | null
+    if (!next || !next.closest('[data-form-field-panel-item]')) {
+      setPanelActiveField(null)
+    }
+  }
+
   const renderField = (field: FormFieldConfig, index: number) => {
+    const isActive = activeFieldId === field.id
     return (
-      <div key={field.id} className="border border-gray-200 rounded-lg p-3 space-y-3">
+      <div
+        key={field.id}
+        data-form-field-panel-item={field.id}
+        className={`rounded-lg p-3 space-y-3 border ${isActive ? 'border-blue-400 shadow-sm bg-blue-50/40' : 'border-gray-200'}`}
+        onFocusCapture={() => setPanelActiveField(field.id)}
+        onMouseDownCapture={() => setPanelActiveField(field.id)}
+        onBlurCapture={handleFieldPanelBlur}
+      >
         <div className="flex items-center justify-between text-sm font-medium text-gray-700">
           <span>{field.label}</span>
           <div className="space-x-2">
