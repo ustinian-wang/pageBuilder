@@ -1,91 +1,15 @@
-import { ComponentDefinition, Element } from '@/lib/types'
+import { ComponentDefinition, Element, FormFieldConfig } from '@/lib/types'
 
-const formField = (id: string, label: string, placeholder?: string, controlType: 'input' | 'textarea' | 'select' | 'radio' = 'input'): Element => {
-  const fieldBase: Element = {
-    id: `${id}-wrapper`,
-    type: 'container',
-    props: {},
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '6px',
-      width: '100%',
-    },
-    children: [
-      {
-        id: `${id}-label`,
-        type: 'text',
-        props: {
-          text: label,
-        },
-        style: {
-          fontWeight: '600',
-          color: '#111827',
-        },
-      },
-    ],
-  }
-
-  const controlStyle = {
-    width: '100%',
-    border: '1px solid #E5E7EB',
-    borderRadius: '6px',
-    padding: '8px 10px',
-    backgroundColor: '#FFFFFF',
-  }
-
-  let control: Element
-  switch (controlType) {
-    case 'select':
-      control = {
-        id: `${id}-select`,
-        type: 'list',
-        props: {
-          ordered: false,
-          items: ['选项 A', '选项 B', '选项 C'],
-        },
-        style: {
-          ...controlStyle,
-          listStyle: 'none',
-          margin: '0',
-          padding: '8px 10px',
-          backgroundColor: '#F9FAFB',
-        },
-      }
-      break
-    case 'radio':
-      control = {
-        id: `${id}-radio`,
-        type: 'list',
-        props: {
-          ordered: false,
-          items: ['选项 1', '选项 2'],
-        },
-        style: {
-          ...controlStyle,
-          listStyle: 'none',
-          margin: '0',
-          padding: '8px 10px',
-          backgroundColor: '#F9FAFB',
-        },
-      }
-      break
-    default:
-      control = {
-        id: `${id}-input`,
-        type: 'input',
-        props: {
-          placeholder: placeholder || '请输入',
-        },
-        style: controlStyle,
-      }
-  }
-
-  return {
-    ...fieldBase,
-    children: [...(fieldBase.children || []), control],
-  }
-}
+const createField = (config: Partial<FormFieldConfig> & { id: string; name: string; label: string }): FormFieldConfig => ({
+  component: 'input',
+  placeholder: '请输入',
+  componentProps: {},
+  options: [],
+  validations: [],
+  dependencies: [],
+  required: false,
+  ...config,
+})
 
 const compositeFormModule: Element = {
   id: 'composite-form-root',
@@ -126,54 +50,114 @@ const compositeFormModule: Element = {
     {
       id: 'composite-form-body',
       type: 'form',
-      props: {},
+      props: {
+        labelWidth: 122,
+        labelWrap: true,
+        labelEllipsis: true,
+        layout: 'horizontal',
+        rowGap: 18,
+        submitLabel: '提交',
+        cancelLabel: '取消',
+        groups: [
+          {
+            id: 'basic-info',
+            label: '基础信息',
+            description: '填写姓名/邮箱/客户类型等基础内容',
+          },
+          {
+            id: 'extra-info',
+            label: '高级设置',
+            description: '联动字段、校验示例',
+          },
+        ],
+        fields: [
+          createField({
+            id: 'field-name',
+            name: 'name',
+            label: '姓名',
+            placeholder: '请输入姓名',
+            component: 'a-input',
+            groupId: 'basic-info',
+            required: true,
+            validations: [
+              { id: 'rule-name-length', type: 'string', min: 2, max: 20, message: '姓名需要 2-20 个字符' },
+            ],
+          }),
+          createField({
+            id: 'field-email',
+            name: 'email',
+            label: '邮箱',
+            placeholder: 'name@example.com',
+            component: 'input',
+            groupId: 'basic-info',
+            validations: [{ id: 'rule-email', type: 'email', message: '请输入有效的邮箱地址' }],
+          }),
+          createField({
+            id: 'field-type',
+            name: 'customerType',
+            label: '客户类型',
+            component: 'a-select',
+            groupId: 'basic-info',
+            options: [
+              { label: '内部客户', value: 'internal' },
+              { label: '外部客户', value: 'external' },
+              { label: '合作伙伴', value: 'partner' },
+            ],
+            componentProps: { allowClear: true, placeholder: '请选择类型' },
+          }),
+          createField({
+            id: 'field-notify',
+            name: 'notify',
+            label: '开通通知',
+            component: 'a-switch',
+            groupId: 'extra-info',
+            componentProps: { defaultValue: true },
+          }),
+          createField({
+            id: 'field-channel',
+            name: 'channel',
+            label: '通知方式',
+            component: 'a-radio',
+            groupId: 'extra-info',
+            options: [
+              { label: '短信', value: 'sms' },
+              { label: '邮件', value: 'email' },
+              { label: '站内信', value: 'inbox' },
+            ],
+            dependencies: [
+              {
+                id: 'dep-channel',
+                sourceFieldId: 'field-notify',
+                operator: 'equals',
+                value: true,
+                action: 'enable',
+              },
+            ],
+          }),
+          createField({
+            id: 'field-remark',
+            name: 'remark',
+            label: '备注说明',
+            component: 'textarea',
+            placeholder: '当客户类型为“外部客户”时显示',
+            groupId: 'extra-info',
+            dependencies: [
+              {
+                id: 'dep-remark',
+                sourceFieldId: 'field-type',
+                operator: 'equals',
+                value: 'external',
+                action: 'show',
+              },
+            ],
+          }),
+        ],
+      },
       style: {
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
       },
-      children: [
-        formField('composite-form-name', '姓名', '请输入姓名'),
-        formField('composite-form-email', '邮箱', 'name@example.com'),
-        formField('composite-form-type', '类型', undefined, 'select'),
-        {
-          id: 'composite-form-actions',
-          type: 'container',
-          props: {},
-          style: {
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '12px',
-            paddingTop: '8px',
-          },
-          children: [
-            {
-              id: 'composite-form-cancel',
-              type: 'button',
-              props: {
-                text: '取消',
-              },
-              className: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-              style: {
-                padding: '10px 18px',
-                borderRadius: '8px',
-              },
-            },
-            {
-              id: 'composite-form-submit',
-              type: 'button',
-              props: {
-                text: '提交',
-              },
-              className: 'bg-blue-600 text-white hover:bg-blue-700',
-              style: {
-                padding: '10px 18px',
-                borderRadius: '8px',
-              },
-            },
-          ],
-        },
-      ],
     },
   ],
 }

@@ -12,6 +12,7 @@ import { RadioPanel } from './property-panel/panels/antd/RadioPanel'
 import { TabsPanel } from './property-panel/panels/antd/TabsPanel'
 import { PopoverPanel } from './property-panel/panels/antd/PopoverPanel'
 import { ContainerPanel } from './property-panel/panels/ContainerPanel'
+import { FormPanel } from './property-panel/panels/FormPanel'
 import { PlusOutlined, DeleteOutlined, CopyOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
 
 interface PropertyPanelProps {
@@ -571,6 +572,35 @@ export function PropertyPanel({ element, onUpdate, activeTab: externalActiveTab,
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
             {renderCommonAntdBasicPanel(panelProps)}
+            <StylePanel {...panelProps} isTable={false} />
+          </div>
+        </Tabs>
+      </div>
+    )
+  }
+
+  if (element.type === 'form') {
+    const panelProps = {
+      element,
+      updateProps,
+      updateStyle,
+      onUpdate,
+    }
+
+    return (
+      <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full" data-property-panel>
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-gray-700">属性面板</h2>
+        </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col flex-1 min-h-0">
+          <div className="px-4 pt-4 border-b border-gray-200 flex-shrink-0">
+            <TabsList className="w-full">
+              <TabsTrigger value="basic" className="flex-1">内容配置</TabsTrigger>
+              <TabsTrigger value="style" className="flex-1">样式设置</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <FormPanel {...panelProps} />
             <StylePanel {...panelProps} isTable={false} />
           </div>
         </Tabs>

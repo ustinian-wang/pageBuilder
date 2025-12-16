@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
-import { Element, ElementType, ComponentDefinition } from '@/lib/types'
+import { Element, ElementType, ComponentDefinition, FormFieldConfig, FormFieldDependency } from '@/lib/types'
 import { ResizeHandle } from './ResizeHandle'
 import { ComponentItem } from './ComponentItem'
 import { generateId } from '@/lib/utils'
@@ -145,6 +145,60 @@ const getIconComponent = (iconName: string | undefined): React.ReactNode | undef
   return IconComponent ? React.createElement(IconComponent) : undefined
 }
 
+const getDefaultFormFieldValue = (field: FormFieldConfig) => {
+  if (field.componentProps && 'defaultValue' in field.componentProps) {
+    return field.componentProps.defaultValue
+  }
+  if (field.component === 'checkbox' || field.component === 'a-checkbox') {
+    return []
+  }
+  if (field.component === 'switch' || field.component === 'a-switch') {
+    return false
+  }
+  return ''
+}
+
+const normalizeDependencyValue = (value: FormFieldDependency['value']) => {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string' && value.includes(',')) {
+    return value
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean)
+  }
+  return value
+}
+
+const evaluateFormDependency = (dep: FormFieldDependency, values: Record<string, any>) => {
+  const sourceValue = values[dep.sourceFieldId]
+  const targetValue = normalizeDependencyValue(dep.value)
+
+  switch (dep.operator) {
+    case 'equals':
+      return sourceValue === targetValue
+    case 'notEquals':
+      return sourceValue !== targetValue
+    case 'includes':
+      if (Array.isArray(sourceValue)) {
+        if (Array.isArray(targetValue)) {
+          return targetValue.every(val => sourceValue.includes(val))
+        }
+        return sourceValue.includes(targetValue as any)
+      }
+      if (typeof sourceValue === 'string' && typeof targetValue === 'string') {
+        return sourceValue.includes(targetValue)
+      }
+      return false
+    case 'in':
+      if (Array.isArray(targetValue)) {
+        return targetValue.includes(sourceValue)
+      }
+      return sourceValue === targetValue
+    default:
+      return false
+  }
+}
+
 // 系统组件（与 ComponentPanel 保持一致）
 const systemComponents: Array<{ type: ElementType; label: string; icon: string; description?: string }> = [
   { type: 'container', label: '容器', icon: '📦', description: '用于包裹其他组件的容器' },
@@ -208,7 +262,16 @@ const getDefaultProps = (type: ElementType): Record<string, any> => {
     heading: { text: '标题', level: 1 },
     paragraph: { text: '段落文本' },
     list: { items: ['项目1', '项目2'], ordered: false },
-    form: {},
+    form: {
+      fields: [],
+      labelWidth: 122,
+      labelWrap: true,
+      labelEllipsis: false,
+      layout: 'horizontal',
+      rowGap: 16,
+      submitLabel: '提交',
+      cancelLabel: '取消',
+    },
     'a-button': { text: 'Button', type: 'default' },
     'a-input': { placeholder: '请输入' },
     'a-card': { title: 'Card Title' },
@@ -985,12 +1048,47 @@ export function ElementRenderer({
   const [saving, setSaving] = useState(false)
   const [checkingName, setCheckingName] = useState(false)
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
+  const [formValues, setFormValues] = useState<Record<string, any>>({})
   
   // 组件选择弹窗状态（用于容器组件）
   const [showComponentModal, setShowComponentModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [customComponents, setCustomComponents] = useState<ComponentDefinition[]>([])
   const compositeComponents = useMemo(() => compositeModules, [])
+
+  const formFields: FormFieldConfig[] = useMemo(() => {
+    return Array.isArray(element.props?.fields) ? element.props.fields : []
+  }, [element.props?.fields])
+  const formFieldsKey = useMemo(() => (formFields.length ? formFields.map(field => field.id).join('|') : 'no-fields'), [formFields])
+  const formFieldsRef = useRef<FormFieldConfig[]>(formFields)
+
+  useEffect(() => {
+    formFieldsRef.current = formFields
+  }, [formFields])
+
+  useEffect(() => {
+    if (element.type !== 'form') return
+    setFormValues(prev => {
+      const next = { ...prev }
+      let changed = false
+      const fieldsSnapshot = formFieldsRef.current
+      const validIds = new Set<string>()
+      fieldsSnapshot.forEach(field => {
+        validIds.add(field.id)
+        if (!(field.id in next)) {
+          next[field.id] = getDefaultFormFieldValue(field)
+          changed = true
+        }
+      })
+      Object.keys(next).forEach(key => {
+        if (!validIds.has(key)) {
+          delete next[key]
+          changed = true
+        }
+      })
+      return changed ? next : prev
+    })
+  }, [element.id, element.type, formFieldsKey])
   
   // 加载自定义模块
   useEffect(() => {
@@ -1816,33 +1914,328 @@ export function ElementRenderer({
       )
       break
 
-    case 'form':
+    case 'form': {
+      const formProps = element.props || {}
+      const fields = formFields
+      const labelWidth = formProps.labelWidth ?? 122
+      const layoutDirection = formProps.layout === 'vertical' ? 'column' : 'row'
+      const rowGap = formProps.rowGap ?? 16
+      const groups = Array.isArray(formProps.groups) ? formProps.groups : []
+
+      if (!fields.length) {
+        content = (
+          <form
+            ref={setNodeRef}
+            style={style}
+            className={element.className}
+            onClick={handleClick}
+            onContextMenu={handleContextMenu}
+          >
+            {element.children?.map(child => (
+              <ElementRenderer
+                key={child.id}
+                element={child}
+                selectedElementId={selectedElementId}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                onCopy={onCopy}
+                parentAutoFill={false}
+              />
+            ))}
+            {isOver && <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50" />}
+          </form>
+        )
+        break
+      }
+
+      const handleFieldValueChange = (field: FormFieldConfig, value: any) => {
+        setFormValues(prev => ({
+          ...prev,
+          [field.id]: value,
+        }))
+      }
+
+      const computeFieldState = (field: FormFieldConfig) => {
+        let visible = true
+        let disabled = field.componentProps?.disabled === true
+        if (field.dependencies && field.dependencies.length > 0) {
+          field.dependencies.forEach(dep => {
+            const matches = evaluateFormDependency(dep, formValues)
+            if (dep.action === 'hide' && matches) {
+              visible = false
+            }
+            if (dep.action === 'show') {
+              visible = matches
+            }
+            if (dep.action === 'disable' && matches) {
+              disabled = true
+            }
+            if (dep.action === 'enable' && matches) {
+              disabled = false
+            }
+          })
+        }
+        return { visible, disabled }
+      }
+
+      const renderControl = (field: FormFieldConfig, value: any, disabled: boolean) => {
+        const baseProps = { ...(field.componentProps || {}) }
+        delete (baseProps as any).defaultValue
+        const commonInputProps = {
+          className: 'w-full border border-gray-300 rounded px-3 py-2',
+          placeholder: field.placeholder,
+          disabled,
+          ...baseProps,
+        }
+
+        switch (field.component) {
+          case 'textarea':
+            return (
+              <textarea
+                {...commonInputProps}
+                value={value ?? ''}
+                onChange={e => handleFieldValueChange(field, e.target.value)}
+              />
+            )
+          case 'select':
+            return (
+              <select
+                {...commonInputProps}
+                value={value ?? ''}
+                onChange={e => handleFieldValueChange(field, e.target.value)}
+              >
+                <option value="">请选择</option>
+                {(field.options || []).map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            )
+          case 'radio':
+            return (
+              <div className="flex flex-wrap gap-4">
+                {(field.options || []).map(opt => (
+                  <label key={opt.value} className="flex items-center gap-1 text-sm text-gray-700">
+                    <input
+                      type="radio"
+                      name={field.id}
+                      value={opt.value}
+                      checked={value === opt.value}
+                      disabled={disabled}
+                      onChange={e => handleFieldValueChange(field, e.target.value)}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            )
+          case 'checkbox':
+            return (
+              <div className="flex flex-wrap gap-4">
+                {(field.options || []).map(opt => {
+                  const checked = Array.isArray(value) ? value.includes(opt.value) : false
+                  return (
+                    <label key={opt.value} className="flex items-center gap-1 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        value={opt.value}
+                        checked={checked}
+                        disabled={disabled}
+                        onChange={e => {
+                          const current = Array.isArray(value) ? [...value] : []
+                          if (e.target.checked) {
+                            if (!current.includes(opt.value)) current.push(opt.value)
+                          } else {
+                            const idx = current.indexOf(opt.value)
+                            if (idx > -1) current.splice(idx, 1)
+                          }
+                          handleFieldValueChange(field, current)
+                        }}
+                      />
+                      {opt.label}
+                    </label>
+                  )
+                })}
+              </div>
+            )
+          case 'date':
+            return (
+              <input
+                {...commonInputProps}
+                type="date"
+                value={value ?? ''}
+                onChange={e => handleFieldValueChange(field, e.target.value)}
+              />
+            )
+          case 'number':
+            return (
+              <input
+                {...commonInputProps}
+                type="number"
+                value={value ?? ''}
+                onChange={e => handleFieldValueChange(field, e.target.value)}
+              />
+            )
+          case 'switch':
+            return (
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={!!value}
+                  disabled={disabled}
+                  onChange={e => handleFieldValueChange(field, e.target.checked)}
+                />
+                {field.placeholder || '切换'}
+              </label>
+            )
+          case 'a-input':
+            return (
+              <Input
+                {...baseProps}
+                disabled={disabled}
+                value={value ?? ''}
+                placeholder={field.placeholder}
+                onChange={e => handleFieldValueChange(field, e.target.value)}
+              />
+            )
+          case 'a-select':
+            return (
+              <Select
+                {...baseProps}
+                disabled={disabled}
+                style={{ width: '100%' }}
+                value={value ?? undefined}
+                placeholder={field.placeholder}
+                onChange={val => handleFieldValueChange(field, val)}
+                options={(field.options || []).map(opt => ({ label: opt.label, value: opt.value }))}
+              />
+            )
+          case 'a-radio':
+            return (
+              <Radio.Group
+                {...baseProps}
+                disabled={disabled}
+                value={value}
+                onChange={e => handleFieldValueChange(field, e.target.value)}
+              >
+                {(field.options || []).map(opt => (
+                  <Radio key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </Radio>
+                ))}
+              </Radio.Group>
+            )
+          case 'a-checkbox':
+            return (
+              <Checkbox.Group
+                {...baseProps}
+                disabled={disabled}
+                options={(field.options || []).map(opt => ({ label: opt.label, value: opt.value }))}
+                value={Array.isArray(value) ? value : []}
+                onChange={vals => handleFieldValueChange(field, vals)}
+              />
+            )
+          case 'a-switch':
+            return (
+              <Switch {...baseProps} checked={!!value} disabled={disabled} onChange={checked => handleFieldValueChange(field, checked)} />
+            )
+          default:
+            return (
+              <input
+                {...commonInputProps}
+                type="text"
+                value={value ?? ''}
+                onChange={e => handleFieldValueChange(field, e.target.value)}
+              />
+            )
+        }
+      }
+
+      const sections: Array<{ id: string; group?: { label: string; description?: string } | null; fields: FormFieldConfig[] }> = []
+      const groupMap = new Map<string, FormFieldConfig[]>()
+      fields.forEach(field => {
+        const key = field.groupId || 'default'
+        if (!groupMap.has(key)) {
+          groupMap.set(key, [])
+        }
+        groupMap.get(key)!.push(field)
+      })
+      groups.forEach(group => {
+        if (groupMap.has(group.id)) {
+          sections.push({ id: group.id, group, fields: groupMap.get(group.id)! })
+          groupMap.delete(group.id)
+        }
+      })
+      if (groupMap.has('default')) {
+        sections.push({ id: 'default', group: null, fields: groupMap.get('default')! })
+      }
+
       content = (
         <form
           ref={setNodeRef}
-          style={style}
+          style={{ ...style, display: 'flex', flexDirection: 'column', gap: `${rowGap}px`, position: 'relative' }}
           className={element.className}
           onClick={handleClick}
           onContextMenu={handleContextMenu}
         >
-          {element.children?.map(child => (
-            <ElementRenderer
-              key={child.id}
-              element={child}
-              selectedElementId={selectedElementId}
-              onSelect={onSelect}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onCopy={onCopy}
-              parentAutoFill={false}
-            />
+          {sections.map(section => (
+            <div key={section.id} className="flex flex-col gap-4">
+              {section.group && (
+                <div>
+                  <div className="text-sm font-semibold text-gray-800">{section.group.label}</div>
+                  {section.group.description && <div className="text-xs text-gray-500 mt-1">{section.group.description}</div>}
+                </div>
+              )}
+              {section.fields.map(field => {
+                const { visible, disabled } = computeFieldState(field)
+                if (!visible) return null
+                const labelStyles: React.CSSProperties = {
+                  width: layoutDirection === 'row' ? `${labelWidth}px` : '100%',
+                  flexShrink: 0,
+                  color: '#1f2937',
+                  fontWeight: 500,
+                  whiteSpace: formProps.labelWrap ? 'normal' : 'nowrap',
+                  wordBreak: 'break-word',
+                  overflow: formProps.labelEllipsis ? 'hidden' : undefined,
+                  textOverflow: formProps.labelEllipsis ? 'ellipsis' : undefined,
+                  display: formProps.labelWrap ? 'block' : 'flex',
+                }
+                const value = field.id in formValues ? formValues[field.id] : getDefaultFormFieldValue(field)
+                return (
+                  <div
+                    key={field.id}
+                    className="flex"
+                    style={{ gap: '12px', flexDirection: layoutDirection, alignItems: layoutDirection === 'row' ? 'center' : 'flex-start' }}
+                  >
+                    <div style={labelStyles}>{field.label}</div>
+                    <div style={{ flex: 1, width: '100%' }}>
+                      {renderControl(field, value, disabled)}
+                      {field.validations?.map(rule => (
+                        <div key={rule.id} className="text-xs text-gray-400 mt-1">
+                          {rule.message || `${field.label}校验`}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           ))}
-          {isOver && (
-            <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50" />
-          )}
+          <div className="flex justify-end gap-3 pt-4">
+            <button type="button" className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700">
+              {formProps.cancelLabel || '取消'}
+            </button>
+            <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded text-sm">
+              {formProps.submitLabel || '提交'}
+            </button>
+          </div>
+          {isOver && <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 pointer-events-none" />}
         </form>
       )
       break
+    }
 
     // Ant Design 组件
     case 'a-button':

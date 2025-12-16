@@ -66,6 +66,76 @@ export interface Element extends BaseElement {
   children?: Element[]
 }
 
+// 表单元素相关类型
+export type FormFieldComponentType =
+  | 'input'
+  | 'textarea'
+  | 'select'
+  | 'radio'
+  | 'checkbox'
+  | 'date'
+  | 'number'
+  | 'switch'
+  | 'a-input'
+  | 'a-select'
+  | 'a-radio'
+  | 'a-checkbox'
+  | 'a-switch'
+
+export interface FormFieldOption {
+  label: string
+  value: string
+}
+
+export interface FormValidationRule {
+  id: string
+  type: 'required' | 'string' | 'number' | 'email' | 'pattern'
+  message?: string
+  min?: number
+  max?: number
+  pattern?: string
+}
+
+export interface FormFieldDependency {
+  id: string
+  sourceFieldId: string
+  operator: 'equals' | 'notEquals' | 'includes' | 'in'
+  value?: string | number | string[]
+  action: 'show' | 'hide' | 'enable' | 'disable'
+}
+
+export interface FormFieldConfig {
+  id: string
+  name: string
+  label: string
+  placeholder?: string
+  component: FormFieldComponentType
+  componentProps?: Record<string, any>
+  options?: FormFieldOption[]
+  groupId?: string
+  required?: boolean
+  validations?: FormValidationRule[]
+  dependencies?: FormFieldDependency[]
+}
+
+export interface FormGroup {
+  id: string
+  label: string
+  description?: string
+}
+
+export interface FormElementProps {
+  fields: FormFieldConfig[]
+  labelWidth?: number
+  labelWrap?: boolean
+  labelEllipsis?: boolean
+  groups?: FormGroup[]
+  layout?: 'horizontal' | 'vertical'
+  rowGap?: number
+  submitLabel?: string
+  cancelLabel?: string
+}
+
 // 页面配置
 export interface PageConfig {
   id: string
