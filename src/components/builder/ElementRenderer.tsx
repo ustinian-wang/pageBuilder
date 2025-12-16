@@ -1923,6 +1923,16 @@ export function ElementRenderer({
       const layoutDirection = formProps.layout === 'vertical' ? 'column' : 'row'
       const rowGap = formProps.rowGap ?? 16
       const groups = Array.isArray(formProps.groups) ? formProps.groups : []
+      const actionsVariant = formProps.actionsVariant || 'default'
+      const actionsAlign = formProps.actionsAlign || (actionsVariant === 'default' ? 'right' : 'center')
+      const actionsGap = formProps.actionsGap ?? (actionsVariant === 'bar' ? 20 : 12)
+      const actionsPadding = formProps.actionsPadding ?? (actionsVariant === 'bar' ? 20 : 12)
+      const actionsBackground = formProps.actionsBackground || (actionsVariant === 'bar' ? '#f9fafb' : 'transparent')
+      const justifyMap: Record<string, string> = {
+        left: 'flex-start',
+        center: 'center',
+        right: 'flex-end',
+      }
 
       if (!fields.length) {
         content = (
@@ -2306,7 +2316,19 @@ export function ElementRenderer({
           >
             + 新增表单项
           </button>
-          <div className="flex justify-end gap-3 pt-4">
+          <div
+            className={actionsVariant === 'bar' ? 'rounded-lg border border-gray-200' : ''}
+            style={{
+              display: 'flex',
+              justifyContent: justifyMap[actionsAlign] || 'flex-end',
+              gap: `${actionsGap}px`,
+              padding: actionsVariant === 'bar' ? `${actionsPadding}px` : '0',
+              backgroundColor: actionsVariant === 'bar' ? actionsBackground : 'transparent',
+              marginTop: '12px',
+              alignItems: 'center',
+              borderTop: actionsVariant === 'bar' ? '1px solid #efefef' : undefined,
+            }}
+          >
             <button type="button" className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700">
               {formProps.cancelLabel || '取消'}
             </button>

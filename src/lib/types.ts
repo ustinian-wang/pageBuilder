@@ -134,6 +134,11 @@ export interface FormElementProps {
   rowGap?: number
   submitLabel?: string
   cancelLabel?: string
+  actionsVariant?: 'default' | 'bar'
+  actionsAlign?: 'left' | 'center' | 'right'
+  actionsGap?: number
+  actionsPadding?: number
+  actionsBackground?: string
 }
 
 // 页面配置

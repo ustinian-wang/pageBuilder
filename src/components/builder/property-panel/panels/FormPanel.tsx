@@ -45,6 +45,11 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
       rowGap: element.props?.rowGap ?? 16,
       submitLabel: element.props?.submitLabel || '提交',
       cancelLabel: element.props?.cancelLabel || '取消',
+      actionsVariant: element.props?.actionsVariant || 'default',
+      actionsAlign: element.props?.actionsAlign || 'center',
+      actionsGap: element.props?.actionsGap ?? 12,
+      actionsPadding: element.props?.actionsPadding ?? 12,
+      actionsBackground: element.props?.actionsBackground || '',
     }
   }, [element.props])
 
@@ -299,6 +304,73 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
             value={formProps.cancelLabel}
             onChange={e => updateFormProps({ cancelLabel: e.target.value })}
           />
+        </div>
+      </div>
+
+      <div className="border border-gray-200 rounded p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-800">操作栏样式</h3>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">展示类型</label>
+          <select
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+            value={formProps.actionsVariant}
+            onChange={e => updateFormProps({ actionsVariant: e.target.value as FormElementProps['actionsVariant'] })}
+          >
+            <option value="default">默认（右侧对齐）</option>
+            <option value="bar">Footer Bar</option>
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">按钮对齐</label>
+            <select
+              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              value={formProps.actionsAlign}
+              onChange={e => updateFormProps({ actionsAlign: e.target.value as FormElementProps['actionsAlign'] })}
+            >
+              <option value="left">左对齐</option>
+              <option value="center">居中</option>
+              <option value="right">右对齐</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">按钮间距(px)</label>
+            <input
+              type="number"
+              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              value={formProps.actionsGap}
+              onChange={e => updateFormProps({ actionsGap: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">区域内边距(px)</label>
+            <input
+              type="number"
+              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              value={formProps.actionsPadding}
+              onChange={e => updateFormProps({ actionsPadding: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">背景颜色</label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                className="w-10 h-9 border border-gray-300 rounded"
+                value={formProps.actionsBackground || '#ffffff'}
+                onChange={e => updateFormProps({ actionsBackground: e.target.value })}
+              />
+              <input
+                type="text"
+                className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
+                placeholder="#ffffff / transparent"
+                value={formProps.actionsBackground || ''}
+                onChange={e => updateFormProps({ actionsBackground: e.target.value })}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

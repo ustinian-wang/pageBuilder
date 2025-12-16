@@ -58,6 +58,11 @@ const compositeFormModule: Element = {
         rowGap: 18,
         submitLabel: '提交',
         cancelLabel: '取消',
+        actionsVariant: 'bar',
+        actionsAlign: 'center',
+        actionsGap: 20,
+        actionsPadding: 20,
+        actionsBackground: '#f9fafb',
         groups: [
           {
             id: 'basic-info',
