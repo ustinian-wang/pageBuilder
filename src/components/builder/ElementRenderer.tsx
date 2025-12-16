@@ -2,9 +2,59 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
-import { Element, ElementType } from '@/lib/types'
+import { Element, ElementType, ComponentDefinition } from '@/lib/types'
 import { ResizeHandle } from './ResizeHandle'
 import { generateId } from '@/lib/utils'
+
+// 可复用的组件项（用于点击选择，非拖拽）
+interface ComponentItemProps {
+  component: ComponentDefinition | { type: string; label: string; icon: string; description?: string; elementData?: Element; moduleId?: string }
+  onClick: (componentType: ElementType | string, elementData?: Element, moduleId?: string) => void
+  theme?: 'blue' | 'green' // 主题颜色：blue 用于系统/Ant Design 组件，green 用于自定义组件
+}
+
+const ComponentItem = ({ component, onClick, theme = 'blue' }: ComponentItemProps) => {
+  const isAntdComponent = typeof component.type === 'string' && component.type.startsWith('a-')
+  const isCustom = 'moduleId' in component && component.moduleId
+  
+  // 确定主题颜色
+  const finalTheme = theme === 'green' || isCustom ? 'green' : 'blue'
+  
+  // 确定样式类
+  const borderClass = finalTheme === 'green' 
+    ? 'border-gray-200 hover:border-green-400 hover:bg-green-50'
+    : isAntdComponent
+    ? 'border-blue-200 hover:border-blue-400 hover:bg-blue-50 bg-blue-50'
+    : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+  
+  const handleClick = () => {
+    if ('elementData' in component && 'moduleId' in component && component.elementData && component.moduleId) {
+      // 自定义组件：传递 elementData 和 moduleId
+      onClick(component.type, component.elementData, component.moduleId)
+    } else {
+      // 系统组件或 Ant Design 组件：只传递 type
+      onClick(component.type)
+    }
+  }
+  
+  return (
+    <button
+      onClick={handleClick}
+      className={`p-3 border rounded transition-all text-left ${borderClass}`}
+      title={component.description}
+    >
+      <div className="text-xl mb-1">{component.icon}</div>
+      <div className={`text-xs font-medium truncate ${isAntdComponent ? 'text-blue-700' : 'text-gray-700'}`}>
+        {component.label}
+      </div>
+      {component.description && (
+        <div className={`text-xs truncate mt-0.5 ${isAntdComponent ? 'text-blue-600' : 'text-gray-500'}`}>
+          {component.description}
+        </div>
+      )}
+    </button>
+  )
+}
 // Ant Design 组件导入
 import {
   Button,
@@ -840,22 +890,16 @@ const TabContentRenderer = ({
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
                   自定义组件 ({filteredCustomComponents.length})
                 </h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {filteredCustomComponents.map((comp) => (
-                    <button
-                      key={comp.moduleId}
-                      onClick={() => handleAddComponent(comp.type, comp.elementData, comp.moduleId)}
-                      className="p-3 border border-gray-200 rounded hover:border-green-400 hover:bg-green-50 transition-all text-left"
-                      title={comp.description}
-                    >
-                      <div className="text-xl mb-1">{comp.icon}</div>
-                      <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
-                      {comp.description && (
-                        <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    {filteredCustomComponents.map((comp) => (
+                      <ComponentItem
+                        key={comp.moduleId}
+                        component={comp}
+                        onClick={handleAddComponent}
+                        theme="green"
+                      />
+                    ))}
+                  </div>
               </div>
             )}
             
@@ -865,22 +909,16 @@ const TabContentRenderer = ({
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-1">
                   系统组件 ({filteredSystemComponents.length})
                 </h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {filteredSystemComponents.map((comp) => (
-                    <button
-                      key={comp.type}
-                      onClick={() => handleAddComponent(comp.type)}
-                      className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
-                      title={comp.description}
-                    >
-                      <div className="text-xl mb-1">{comp.icon}</div>
-                      <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
-                      {comp.description && (
-                        <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    {filteredSystemComponents.map((comp) => (
+                      <ComponentItem
+                        key={comp.type}
+                        component={comp}
+                        onClick={handleAddComponent}
+                        theme="blue"
+                      />
+                    ))}
+                  </div>
               </div>
             )}
             
@@ -892,18 +930,12 @@ const TabContentRenderer = ({
                 </h3>
                 <div className="grid grid-cols-4 gap-3">
                   {filteredAntdComponents.map((comp) => (
-                    <button
+                    <ComponentItem
                       key={comp.type}
-                      onClick={() => handleAddComponent(comp.type)}
-                      className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
-                      title={comp.description}
-                    >
-                      <div className="text-xl mb-1">{comp.icon}</div>
-                      <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
-                      {comp.description && (
-                        <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
-                      )}
-                    </button>
+                      component={comp}
+                      onClick={handleAddComponent}
+                      theme="blue"
+                    />
                   ))}
                 </div>
               </div>
@@ -2937,18 +2969,12 @@ export function ElementRenderer({
                   </h3>
                   <div className="grid grid-cols-4 gap-3">
                     {filteredCustomComponents.map((comp) => (
-                      <button
+                      <ComponentItem
                         key={comp.moduleId}
-                        onClick={() => handleAddComponentToContainer(comp.type, comp.elementData, comp.moduleId)}
-                        className="p-3 border border-gray-200 rounded hover:border-green-400 hover:bg-green-50 transition-all text-left"
-                        title={comp.description}
-                      >
-                        <div className="text-xl mb-1">{comp.icon}</div>
-                        <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
-                        {comp.description && (
-                          <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
-                        )}
-                      </button>
+                        component={comp}
+                        onClick={handleAddComponentToContainer}
+                        theme="green"
+                      />
                     ))}
                   </div>
                 </div>
@@ -2962,18 +2988,12 @@ export function ElementRenderer({
                   </h3>
                   <div className="grid grid-cols-4 gap-3">
                     {filteredSystemComponents.map((comp) => (
-                      <button
+                      <ComponentItem
                         key={comp.type}
-                        onClick={() => handleAddComponentToContainer(comp.type)}
-                        className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
-                        title={comp.description}
-                      >
-                        <div className="text-xl mb-1">{comp.icon}</div>
-                        <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
-                        {comp.description && (
-                          <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
-                        )}
-                      </button>
+                        component={comp}
+                        onClick={handleAddComponentToContainer}
+                        theme="blue"
+                      />
                     ))}
                   </div>
                 </div>
@@ -2987,18 +3007,12 @@ export function ElementRenderer({
                   </h3>
                   <div className="grid grid-cols-4 gap-3">
                     {filteredAntdComponents.map((comp) => (
-                      <button
+                      <ComponentItem
                         key={comp.type}
-                        onClick={() => handleAddComponentToContainer(comp.type)}
-                        className="p-3 border border-gray-200 rounded hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
-                        title={comp.description}
-                      >
-                        <div className="text-xl mb-1">{comp.icon}</div>
-                        <div className="text-xs font-medium text-gray-700 truncate">{comp.label}</div>
-                        {comp.description && (
-                          <div className="text-xs text-gray-500 truncate mt-0.5">{comp.description}</div>
-                        )}
-                      </button>
+                        component={comp}
+                        onClick={handleAddComponentToContainer}
+                        theme="blue"
+                      />
                     ))}
                   </div>
                 </div>
