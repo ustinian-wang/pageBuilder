@@ -2153,6 +2153,28 @@ export function ElementRenderer({
         }
       }
 
+      const handleAddFormField = (e?: React.MouseEvent) => {
+        e?.stopPropagation()
+        const newField: FormFieldConfig = {
+          id: generateId(),
+          name: `field_${fields.length + 1}`,
+          label: `表单项 ${fields.length + 1}`,
+          component: 'input',
+          placeholder: '请输入',
+          componentProps: {},
+          options: [],
+          validations: [],
+          dependencies: [],
+        }
+        const newFields = [...fields, newField]
+        onUpdate(element.id, {
+          props: {
+            ...element.props,
+            fields: newFields,
+          },
+        })
+      }
+
       const sections: Array<{ id: string; group?: { label: string; description?: string } | null; fields: FormFieldConfig[] }> = []
       const groupMap = new Map<string, FormFieldConfig[]>()
       fields.forEach(field => {
@@ -2223,6 +2245,13 @@ export function ElementRenderer({
               })}
             </div>
           ))}
+          <button
+            type="button"
+            onClick={handleAddFormField}
+            className="w-full border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-500 rounded-lg py-2 text-sm transition-colors"
+          >
+            + 新增表单项
+          </button>
           <div className="flex justify-end gap-3 pt-4">
             <button type="button" className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700">
               {formProps.cancelLabel || '取消'}
