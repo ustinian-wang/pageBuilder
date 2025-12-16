@@ -9,11 +9,14 @@ import { Canvas } from '@/components/builder/Canvas'
 import { PropertyPanel } from '@/components/builder/PropertyPanel'
 import { CodeViewer } from '@/components/builder/CodeViewer'
 import { ActionMenu } from '@/components/builder/ActionMenu'
+import { VueRunnerModal } from '@/components/builder/VueRunnerModal'
 import { Element, ElementType } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 import { useHistory } from '@/hooks/useHistory'
 
 const STORAGE_KEY = 'pageBuilder_currentPage'
+const ANT_PREFIX_STORAGE_KEY = 'pageBuilder_antPrefix'
+type AntPrefix = 'fa' | 'a'
 
 export default function BuilderPage() {
   const searchParams = useSearchParams()
@@ -40,6 +43,10 @@ export default function BuilderPage() {
   const [pages, setPages] = useState<Array<{ id: string; name: string; updatedAt: number }>>([])
   const [showPageList, setShowPageList] = useState(false)
   const [creatingNewPage, setCreatingNewPage] = useState(false)
+  const [showVueRunner, setShowVueRunner] = useState(false)
+  const [antPrefix, setAntPrefix] = useState<AntPrefix>('fa')
+  const [vueRunnerCode, setVueRunnerCode] = useState<string | null>(null)
+  const [vueRunnerRunKey, setVueRunnerRunKey] = useState(0)
   
   // 历史记录管理
   const history = useHistory<Element[]>([])
@@ -245,6 +252,25 @@ export default function BuilderPage() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
     }
   }, [elements, pageName, pageId, loading])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ANT_PREFIX_STORAGE_KEY)
+      if (saved === 'a' || saved === 'fa') {
+        setAntPrefix(saved)
+      }
+    } catch (error) {
+      console.warn('读取组件前缀失败:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANT_PREFIX_STORAGE_KEY, antPrefix)
+    } catch (error) {
+      console.warn('保存组件前缀失败:', error)
+    }
+  }, [antPrefix])
 
   const handleDragStart = (event: DragStartEvent) => {
     setIsDragging(true)
@@ -1340,7 +1366,7 @@ export default function BuilderPage() {
     }
   }
 
-  const handleGenerateCode = async () => {
+  const handleGenerateCode = async (options?: { openVueRunner?: boolean }) => {
     if (elements.length === 0) {
       alert('请先添加一些组件')
       return
@@ -1356,6 +1382,7 @@ export default function BuilderPage() {
         body: JSON.stringify({
           elements,
           componentName: pageName.replace(/\s+/g, '') || 'GeneratedPage',
+          antPrefix,
         }),
       })
 
@@ -1363,6 +1390,11 @@ export default function BuilderPage() {
       if (result.success) {
         setGeneratedCode(result.data.code)
         setGeneratedComponentName(result.data.componentName)
+        if (options?.openVueRunner) {
+          setVueRunnerCode(result.data.code)
+          setShowVueRunner(true)
+          setVueRunnerRunKey(Date.now())
+        }
       } else {
         alert('生成代码失败：' + result.error)
       }
@@ -1527,12 +1559,23 @@ export default function BuilderPage() {
         >
           {saving ? '保存中...' : pageId ? '更新' : '保存'}
         </button>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span>组件前缀</span>
+          <select
+            value={antPrefix}
+            onChange={(e) => setAntPrefix(e.target.value === 'a' ? 'a' : 'fa')}
+            className="px-2 py-1 border border-gray-300 rounded bg-white text-gray-700"
+          >
+            <option value="fa">fa- (默认)</option>
+            <option value="a">a- (Ant Design)</option>
+          </select>
+        </div>
         <button
-          onClick={handleGenerateCode}
+          onClick={() => handleGenerateCode({ openVueRunner: true })}
           disabled={generating}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {generating ? '生成中...' : '生成代码'}
+          {generating ? '运行中...' : '运行代码'}
         </button>
       </div>
 
@@ -1594,13 +1637,20 @@ export default function BuilderPage() {
       </div>
 
       {/* 代码查看器弹窗 */}
-      {generatedCode && (
+      {generatedCode && !showVueRunner && (
         <CodeViewer
           code={generatedCode}
           componentName={generatedComponentName}
           onClose={() => setGeneratedCode(null)}
         />
       )}
+
+      <VueRunnerModal
+        open={showVueRunner}
+        onClose={() => setShowVueRunner(false)}
+        initialCode={vueRunnerCode || undefined}
+        autoRunKey={vueRunnerRunKey}
+      />
     </div>
   )
 }
@@ -1691,4 +1741,3 @@ function getComponentInfo(type: ElementType): { type: ElementType; label: string
   }
   return { type, ...(componentMap[type] || { label: type, icon: '📦' }) }
 }
-

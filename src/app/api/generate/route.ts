@@ -8,7 +8,12 @@ import fs from 'fs/promises'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { elements, componentName = 'GeneratedPage', pageId } = body
+    const {
+      elements,
+      componentName = 'GeneratedPage',
+      pageId,
+      antPrefix,
+    } = body
 
     if (!elements || !Array.isArray(elements)) {
       return NextResponse.json(
@@ -17,7 +22,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const generator = new VueGenerator()
+    const resolvedPrefix = antPrefix === 'a' || antPrefix === 'fa' ? antPrefix : 'fa'
+    const generator = new VueGenerator({ antPrefix: resolvedPrefix })
     let code = ''
 
     if (elements.length === 1) {
@@ -49,4 +55,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

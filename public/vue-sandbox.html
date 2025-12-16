@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vue Sandbox</title>
+    <link rel="stylesheet" href="/vendor/antdv/antd.min.css" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        background: #f8fafc;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      #app {
+        min-height: 100vh;
+        box-sizing: border-box;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      pre {
+        white-space: pre-wrap;
+        padding: 16px;
+        margin: 0;
+        background: #fff1f2;
+        color: #b91c1c;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.6;
+        max-width: 90vw;
+        overflow: auto;
+      }
+    </style>
+    <script src="/vendor/vue/vue.js"></script>
+    <script src="/vendor/antdv/antd.min.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      ;(() => {
+        const SOURCE = 'vue-sandbox'
+        const STYLE_FLAG = 'data-vue-sandbox-style'
+        let vm = null
+
+        const post = (payload) => {
+          try {
+            if (window.parent) {
+              window.parent.postMessage({ source: SOURCE, ...payload }, '*')
+            }
+          } catch (error) {
+            console.error(error)
+          }
+        }
+
+        const resetView = () => {
+          if (vm) {
+            try {
+              vm.$destroy()
+            } catch (error) {
+              console.error(error)
+            }
+            vm = null
+          }
+          const mount = document.getElementById('app')
+          if (mount) {
+            mount.innerHTML = ''
+          }
+          document.querySelectorAll('style[' + STYLE_FLAG + ']').forEach((styleNode) => {
+            styleNode.remove()
+          })
+        }
+
+        const extractBlock = (tag, source) => {
+          const regex = new RegExp('<' + tag + '[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'i')
+          const match = source.match(regex)
+          return match ? match[1].trim() : ''
+        }
+
+        const extractBlocks = (tag, source) => {
+          const regex = new RegExp('<' + tag + '([^>]*)>([\\s\\S]*?)<\\/' + tag + '>', 'gi')
+          const result = []
+          let match
+          while ((match = regex.exec(source))) {
+            result.push({
+              attrs: (match[1] || '').trim(),
+              content: (match[2] || '').trim(),
+            })
+          }
+          return result
+        }
+
+        const compileScript = (raw) => {
+          if (!raw) return {}
+          const transformed = raw
+            .replace(/export\s+default/, 'return ')
+            .replace(/module\.exports\s*=\s*/, 'return ')
+          return new Function(transformed)()
+        }
+
+        const injectStyles = (styles) => {
+          styles.forEach((style, index) => {
+            if (!style.content) {
+              return
+            }
+            const node = document.createElement('style')
+            node.setAttribute(STYLE_FLAG, 'true')
+            node.setAttribute('data-style-order', String(index))
+            node.textContent = style.content
+            document.head.appendChild(node)
+          })
+        }
+
+        const showError = (err) => {
+          const mount = document.getElementById('app')
+          if (mount) {
+            const pre = document.createElement('pre')
+            pre.textContent = err && err.stack ? err.stack : String(err)
+            mount.innerHTML = ''
+            mount.appendChild(pre)
+          }
+          post({
+            type: 'error',
+            message: err && err.message ? err.message : '运行失败',
+          })
+        }
+
+        const runSfc = (source) => {
+          resetView()
+          try {
+            const template = extractBlock('template', source)
+            const script = extractBlock('script', source)
+            const styles = extractBlocks('style', source)
+            injectStyles(styles)
+
+            const parsed = compileScript(script)
+            const component =
+              parsed && typeof parsed === 'object'
+                ? parsed
+                : template
+                  ? { template }
+                  : {}
+
+            if (template && !component.template) {
+              component.template = template
+            }
+
+            vm = new Vue({
+              render: function (h) {
+                return h(component)
+              },
+            }).$mount('#app')
+
+            post({ type: 'success' })
+          } catch (error) {
+            showError(error)
+          }
+        }
+
+        const registerComponentAliases = () => {
+          if (!window.Vue || typeof window.Vue.component !== 'function') {
+            return
+          }
+          const createAlias = (targetTag) => ({
+            functional: true,
+            render(h, ctx) {
+              const data = {
+                ...ctx.data,
+                props: {
+                  ...(ctx.data.props || {}),
+                  ...(ctx.data.attrs || {}),
+                },
+                attrs: {
+                  ...(ctx.data.attrs || {}),
+                },
+                scopedSlots: ctx.scopedSlots,
+              }
+              return h(targetTag, data, ctx.children)
+            },
+          })
+          const aliasComponents = [
+            'button',
+            'input',
+            'card',
+            'form',
+            'form-item',
+            'table',
+            'select',
+            'datepicker',
+            'radio',
+            'checkbox',
+            'switch',
+            'slider',
+            'rate',
+            'tag',
+            'badge',
+            'avatar',
+            'divider',
+            'space',
+            'row',
+            'col',
+            'layout',
+            'menu',
+            'tabs',
+            'tab-pane',
+            'collapse',
+            'timeline',
+            'list',
+            'empty',
+            'spin',
+            'alert',
+            'message',
+            'notification',
+            'modal',
+            'drawer',
+            'popconfirm',
+            'popover',
+            'tooltip',
+            'dropdown',
+          ]
+          aliasComponents.forEach((name) => {
+            const alias = `fa-${name}`
+            if (window.Vue.options && window.Vue.options.components && window.Vue.options.components[alias]) {
+              return
+            }
+            window.Vue.component(alias, createAlias(`a-${name}`))
+          })
+        }
+
+        window.addEventListener('message', (event) => {
+          const data = event.data
+          if (!data || typeof data !== 'object' || data.type !== 'run') {
+            return
+          }
+          runSfc(typeof data.code === 'string' ? data.code : '')
+        })
+
+        if (window.antd && window.Vue && typeof window.Vue.use === 'function') {
+          window.Vue.use(window.antd)
+          registerComponentAliases()
+        } else {
+          registerComponentAliases()
+        }
+
+        post({ type: 'ready' })
+      })()
+    </script>
+  </body>
+</html>
