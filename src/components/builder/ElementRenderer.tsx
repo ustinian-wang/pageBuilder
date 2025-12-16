@@ -1049,6 +1049,8 @@ export function ElementRenderer({
   const [checkingName, setCheckingName] = useState(false)
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
   const [formValues, setFormValues] = useState<Record<string, any>>({})
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null)
+  const [labelDraft, setLabelDraft] = useState<string>('')
   
   // 组件选择弹窗状态（用于容器组件）
   const [showComponentModal, setShowComponentModal] = useState(false)
@@ -2153,6 +2155,15 @@ export function ElementRenderer({
         }
       }
 
+      const updateFormFields = (nextFields: FormFieldConfig[]) => {
+        onUpdate(element.id, {
+          props: {
+            ...element.props,
+            fields: nextFields,
+          },
+        })
+      }
+
       const handleAddFormField = (e?: React.MouseEvent) => {
         e?.stopPropagation()
         const newField: FormFieldConfig = {
@@ -2166,13 +2177,28 @@ export function ElementRenderer({
           validations: [],
           dependencies: [],
         }
-        const newFields = [...fields, newField]
-        onUpdate(element.id, {
-          props: {
-            ...element.props,
-            fields: newFields,
-          },
-        })
+        updateFormFields([...fields, newField])
+      }
+
+      const handleStartLabelEdit = (field: FormFieldConfig, event: React.MouseEvent) => {
+        event.stopPropagation()
+        setEditingLabelId(field.id)
+        setLabelDraft(field.label || '')
+      }
+
+      const commitLabelEdit = (fieldId: string, nextLabel?: string) => {
+        const targetLabel = nextLabel !== undefined ? nextLabel : labelDraft
+        const safeLabel = targetLabel.trim() || '未命名字段'
+        updateFormFields(
+          fields.map(field => (field.id === fieldId ? { ...field, label: safeLabel } : field))
+        )
+        setEditingLabelId(null)
+        setLabelDraft('')
+      }
+
+      const cancelLabelEdit = () => {
+        setEditingLabelId(null)
+        setLabelDraft('')
       }
 
       const sections: Array<{ id: string; group?: { label: string; description?: string } | null; fields: FormFieldConfig[] }> = []
@@ -2213,6 +2239,7 @@ export function ElementRenderer({
               {section.fields.map(field => {
                 const { visible, disabled } = computeFieldState(field)
                 if (!visible) return null
+                const isEditingLabel = editingLabelId === field.id
                 const labelStyles: React.CSSProperties = {
                   width: layoutDirection === 'row' ? `${labelWidth}px` : '100%',
                   flexShrink: 0,
@@ -2231,7 +2258,34 @@ export function ElementRenderer({
                     className="flex"
                     style={{ gap: '12px', flexDirection: layoutDirection, alignItems: layoutDirection === 'row' ? 'center' : 'flex-start' }}
                   >
-                    <div style={labelStyles}>{field.label}</div>
+                    <div style={labelStyles} onDoubleClick={e => handleStartLabelEdit(field, e)}>
+                      {isEditingLabel ? (
+                        <input
+                          type="text"
+                          value={labelDraft}
+                          autoFocus
+                          onFocus={event => event.currentTarget.select()}
+                          onChange={e => setLabelDraft(e.target.value)}
+                          onBlur={() => {
+                            if (editingLabelId === field.id) {
+                              commitLabelEdit(field.id)
+                            }
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              commitLabelEdit(field.id, (e.target as HTMLInputElement).value)
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault()
+                              cancelLabelEdit()
+                            }
+                          }}
+                          className="w-full border border-blue-400 rounded px-1 py-0.5 text-sm"
+                        />
+                      ) : (
+                        field.label
+                      )}
+                    </div>
                     <div style={{ flex: 1, width: '100%' }}>
                       {renderControl(field, value, disabled)}
                       {field.validations?.map(rule => (

@@ -236,8 +236,8 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
           value={formProps.layout}
           onChange={e => updateFormProps({ layout: e.target.value as FormElementProps['layout'] })}
         >
-          <option value="horizontal">左右布局</option>
-          <option value="vertical">上下布局</option>
+          <option value="horizontal">左右</option>
+          <option value="vertical">上下</option>
         </select>
       </div>
 
