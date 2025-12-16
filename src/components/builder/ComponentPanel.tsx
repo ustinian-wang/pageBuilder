@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useDraggable } from '@dnd-kit/core'
 import { ElementType, Element, ComponentDefinition, CustomModule } from '@/lib/types'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { ElementList } from './ElementList'
 import { ElementRenderer } from './ElementRenderer'
-import { Tooltip } from 'antd'
+import { ComponentItem } from './ComponentItem'
 
 // 统一的组件配置
 const allComponents: ComponentDefinition[] = [
@@ -72,166 +71,7 @@ const getAntdComponents = (): ComponentDefinition[] => {
 
 // 自定义组件（从数据库加载）
 
-function DraggableComponent({ 
-  component, 
-  onPreview,
-  onEdit,
-  onDelete
-}: { 
-  component: ComponentDefinition
-  onPreview?: (component: ComponentDefinition) => void
-  onEdit?: (component: ComponentDefinition) => void
-  onDelete?: (component: ComponentDefinition) => void
-}) {
-  // 为自定义模块和系统组件生成不同的ID前缀，避免冲突
-  const dragId = component.category === 'custom' 
-    ? `custom-module-${component.type}` 
-    : `component-${component.type}`
-  
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: dragId,
-    data: {
-      type: component.category === 'custom' ? 'custom-module' : 'component',
-      componentType: component.type,
-      elementData: component.elementData, // 自定义模块的元素数据
-      moduleId: component.moduleId, // 自定义模块的ID
-    },
-  })
-
-  const handlePreview = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (onPreview && component.category === 'custom') {
-      onPreview(component)
-    }
-  }
-
-  // 判断是否为 Ant Design 组件（type 以 'a-' 开头）
-  const isAntdComponent = typeof component.type === 'string' && component.type.startsWith('a-')
-  
-  return (
-    <div
-      ref={setNodeRef}
-      {...(component.category === 'custom' ? { ...listeners, ...attributes } : { ...listeners, ...attributes })}
-      className={`
-        p-3 rounded transition-all
-        ${isDragging ? 'opacity-30' : ''}
-        cursor-move
-        ${isAntdComponent 
-          ? 'bg-blue-50 border border-blue-200 hover:border-blue-400 hover:bg-blue-100 hover:shadow-md' 
-          : 'bg-white border border-gray-200 hover:border-blue-400 hover:shadow-md'
-        }
-      `}
-      title={component.description}
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-xl flex-shrink-0">{component.icon}</span>
-        <div className="flex-1 min-w-0">
-          <Tooltip title={component.label} placement="top">
-            <div className={`text-sm font-medium truncate ${isAntdComponent ? 'text-blue-700' : 'text-gray-900'}`}>
-              {component.label}
-            </div>
-          </Tooltip>
-          {component.description && (
-            <div className={`text-xs truncate mt-0.5 ${isAntdComponent ? 'text-blue-600' : 'text-gray-500'}`}>
-              {component.description}
-            </div>
-          )}
-        </div>
-        {component.category === 'custom' && (
-          <div 
-            className="flex items-center gap-1 flex-shrink-0"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handlePreview}
-              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-              title="预览"
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (onEdit) {
-                  onEdit(component)
-                }
-              }}
-              className="p-1 text-green-600 hover:bg-green-50 rounded"
-              title="编辑"
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (onDelete) {
-                  onDelete(component)
-                }
-              }}
-              className="p-1 text-red-600 hover:bg-red-50 rounded"
-              title="删除"
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+// DraggableComponent 已替换为共享的 ComponentItem 组件
 
 function ComponentGroup({
   title,
@@ -295,9 +135,10 @@ function ComponentGroup({
       {shouldShow && (
         <div className="grid grid-cols-1 gap-2 mt-2">
           {components.map(component => (
-            <DraggableComponent 
+            <ComponentItem 
               key={component.type} 
               component={component} 
+              mode="drag"
               onPreview={onPreview}
               onEdit={onEdit}
               onDelete={onDelete}
