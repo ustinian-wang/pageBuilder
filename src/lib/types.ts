@@ -114,6 +114,7 @@ export interface FormFieldConfig {
   options?: FormFieldOption[]
   groupId?: string
   required?: boolean
+  showLabel?: boolean
   validations?: FormValidationRule[]
   dependencies?: FormFieldDependency[]
 }
@@ -129,9 +130,11 @@ export interface FormElementProps {
   labelWidth?: number
   labelWrap?: boolean
   labelEllipsis?: boolean
+  labelMinHeight?: number
   groups?: FormGroup[]
   layout?: 'horizontal' | 'vertical'
   rowGap?: number
+  fieldGap?: number
   submitLabel?: string
   cancelLabel?: string
   actionsVariant?: 'default' | 'bar'

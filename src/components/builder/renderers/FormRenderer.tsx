@@ -122,8 +122,10 @@ export function FormRenderer({
   }, [formFieldsKey, element.id])
 
   const labelWidth = formProps.labelWidth ?? 122
+  const labelMinHeight = formProps.labelMinHeight ?? 32
   const layoutDirection = formProps.layout === 'vertical' ? 'column' : 'row'
   const rowGap = formProps.rowGap ?? 16
+  const fieldGap = formProps.fieldGap ?? 24
   const groups = Array.isArray(formProps.groups) ? formProps.groups : []
   const actionsVariant = formProps.actionsVariant || 'default'
   const actionsAlign = formProps.actionsAlign || (actionsVariant === 'default' ? 'right' : 'center')
@@ -432,7 +434,7 @@ export function FormRenderer({
       onContextMenu={handleContextMenu}
     >
       {sections.map(section => (
-        <div key={section.id} className="flex flex-col gap-4">
+        <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: `${fieldGap}px` }}>
           {section.group && (
             <div>
               <div className="text-sm font-semibold text-gray-800">{section.group.label}</div>
@@ -443,16 +445,21 @@ export function FormRenderer({
             const { visible, disabled } = computeFieldState(field)
             if (!visible) return null
             const isEditingLabel = editingLabelId === field.id
+            const labelVisible = field.showLabel !== false
             const labelStyles: React.CSSProperties = {
               width: layoutDirection === 'row' ? `${labelWidth}px` : '100%',
               flexShrink: 0,
-              color: '#1f2937',
-              fontWeight: 500,
+              color: labelVisible ? '#1f2937' : 'rgba(156, 163, 175, 0.9)',
+              fontWeight: 400,
               whiteSpace: formProps.labelWrap ? 'normal' : 'nowrap',
               wordBreak: 'break-word',
               overflow: formProps.labelEllipsis ? 'hidden' : undefined,
               textOverflow: formProps.labelEllipsis ? 'ellipsis' : undefined,
               display: formProps.labelWrap ? 'block' : 'flex',
+              position: 'relative',
+              minHeight: `${labelMinHeight}px`,
+              alignItems: layoutDirection === 'row' ? 'center' : 'flex-start',
+              opacity: labelVisible ? 1 : 0.5,
             }
             const value = field.id in formValues ? formValues[field.id] : getDefaultFormFieldValue(field)
             return (
@@ -486,7 +493,17 @@ export function FormRenderer({
                       className="w-full border border-blue-400 rounded px-1 py-0.5 text-sm"
                     />
                   ) : (
-                    field.label
+                    <span className="flex items-center">
+                      {field.required && labelVisible && (
+                        <span
+                          className="text-red-500 absolute"
+                          style={{ left: '-10px' }}
+                        >
+                          *
+                        </span>
+                      )}
+                      <span>{field.label}</span>
+                    </span>
                   )}
                 </div>
                 <div style={{ flex: 1, width: '100%' }}>

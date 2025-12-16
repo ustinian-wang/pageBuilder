@@ -40,9 +40,11 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
       labelWidth: element.props?.labelWidth ?? 122,
       labelWrap: element.props?.labelWrap !== false,
       labelEllipsis: element.props?.labelEllipsis === true,
+      labelMinHeight: element.props?.labelMinHeight ?? 32,
       groups: element.props?.groups || [],
       layout: element.props?.layout || 'horizontal',
       rowGap: element.props?.rowGap ?? 16,
+      fieldGap: element.props?.fieldGap ?? 24,
       submitLabel: element.props?.submitLabel || '提交',
       cancelLabel: element.props?.cancelLabel || '取消',
       actionsVariant: element.props?.actionsVariant || 'default',
@@ -78,6 +80,7 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
       options: [],
       validations: [],
       dependencies: [],
+      showLabel: true,
     }
     updateFormProps({ fields: [...formProps.fields, newField] })
   }
@@ -193,28 +196,36 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-3 text-sm pt-5">
-            <label className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={!!field.required}
-                onChange={e => handleFieldChange(field.id, { required: e.target.checked })}
-              />
-              必填
-            </label>
-            <label className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={field.componentProps?.disabled === true}
-                onChange={e =>
-                  handleFieldChange(field.id, {
-                    componentProps: { ...field.componentProps, disabled: e.target.checked },
-                  })
-                }
-              />
-              禁用
-            </label>
-          </div>
+        <div className="flex items-center gap-3 text-sm pt-5">
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={!!field.required}
+              onChange={e => handleFieldChange(field.id, { required: e.target.checked })}
+            />
+            必填
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={field.componentProps?.disabled === true}
+              onChange={e =>
+                handleFieldChange(field.id, {
+                  componentProps: { ...field.componentProps, disabled: e.target.checked },
+                })
+              }
+            />
+            禁用
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={field.showLabel !== false}
+              onChange={e => handleFieldChange(field.id, { showLabel: e.target.checked })}
+            />
+            显示标签
+          </label>
+        </div>
         </div>
 
         {['select', 'radio', 'checkbox', 'a-select', 'a-radio', 'a-checkbox'].includes(field.component) && (
@@ -257,12 +268,30 @@ export function FormPanel({ element, onUpdate }: FormPanelProps) {
           />
         </div>
         <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">表单项间距</label>
+          <input
+            type="number"
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+            value={formProps.fieldGap}
+            onChange={e => updateFormProps({ fieldGap: Number(e.target.value) })}
+          />
+        </div>
+        <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">标签宽度(px)</label>
           <input
             type="number"
             className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
             value={formProps.labelWidth}
             onChange={e => updateFormProps({ labelWidth: Number(e.target.value) })}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">标签最小高度(px)</label>
+          <input
+            type="number"
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+            value={formProps.labelMinHeight}
+            onChange={e => updateFormProps({ labelMinHeight: Number(e.target.value) })}
           />
         </div>
       </div>
