@@ -505,28 +505,28 @@ export function FormRenderer({
       <button
         type="button"
         onClick={handleAddFormField}
-        className="w-full border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-500 rounded-lg py-2 text-sm transition-colors"
+        className="w-full border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-500 rounded-lg py-2 text-sm transition-colors mt-4"
       >
         + 新增表单项
       </button>
       <div
-        className={actionsVariant === 'bar' ? 'rounded-lg border border-gray-200' : ''}
+        className={actionsVariant === 'bar' ? 'border-gray-200' : ''}
         style={{
           display: 'flex',
           justifyContent: justifyMap[actionsAlign] || 'flex-end',
           gap: `${actionsGap}px`,
           padding: actionsVariant === 'bar' ? `${actionsPadding}px` : '0',
-          backgroundColor: actionsVariant === 'bar' ? actionsBackground : 'transparent',
+          // backgroundColor: actionsVariant === 'bar' ? actionsBackground : 'transparent',
           marginTop: '12px',
           alignItems: 'center',
           borderTop: actionsVariant === 'bar' ? '1px solid #efefef' : undefined,
         }}
       >
-        <button type="button" className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700">
-          {formProps.cancelLabel || '取消'}
-        </button>
         <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded text-sm">
           {formProps.submitLabel || '提交'}
+        </button>
+        <button type="button" className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700">
+          {formProps.cancelLabel || '取消'}
         </button>
       </div>
       {isOver && <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 pointer-events-none" />}
