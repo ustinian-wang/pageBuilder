@@ -434,8 +434,8 @@ export class VueGenerator {
     const classNameStr = ` class="${mergedClassName}"`
 
     const lines: string[] = []
-    const formEventAttrs = ` data-form-id="${element.id}" @submit.prevent="handleFormSubmit('${element.id}')" @reset.prevent="handleFormReset('${element.id}')"`
-    lines.push(`${this.indentStr()}<form${formEventAttrs}${classNameStr}${styleStr}>`)
+    // 使用 div 替代 form，避免原生表单行为
+    lines.push(`${this.indentStr()}<div data-form-id="${element.id}"${classNameStr}${styleStr}>`)
     this.indent++
 
     const sections = this.buildFormSections(fields, groups)
@@ -460,21 +460,21 @@ export class VueGenerator {
       }
 
       section.fields.forEach(field => {
-        lines.push(...this.generateFormFieldBlock(field, formProps))
+        lines.push(...this.generateFormFieldBlock(field, formProps, element.id))
       })
 
       this.indent--
       lines.push(`${this.indentStr()}</div>`)
     })
 
-    lines.push(...this.generateFormActions(formProps))
+    lines.push(...this.generateFormActions(formProps, element.id))
 
     this.indent--
-    lines.push(`${this.indentStr()}</form>`)
+    lines.push(`${this.indentStr()}</div>`)
     return lines.join('\n')
   }
 
-  private generateFormFieldBlock(field: FormFieldConfig, formProps: FormElementProps): string[] {
+  private generateFormFieldBlock(field: FormFieldConfig, formProps: FormElementProps, formId: string): string[] {
     const originalIndent = this.indent
     const lines: string[] = []
     const layoutDirection = formProps.layout === 'vertical' ? 'column' : 'row'
@@ -530,7 +530,7 @@ export class VueGenerator {
     const controlStyle = this.formatStyle({ flex: '1', width: '100%' })
     lines.push(`${this.indentStr()}<div class="pb-form-field-control"${controlStyle}>`)
 
-    const controlLines = this.generateFormFieldControl(field, this.indent + 1)
+    const controlLines = this.generateFormFieldControl(field, this.indent + 1, formId)
     controlLines.forEach(line => lines.push(line))
 
     if (field.validations && field.validations.length) {
@@ -547,7 +547,7 @@ export class VueGenerator {
     return lines
   }
 
-  private generateFormActions(formProps: FormElementProps): string[] {
+  private generateFormActions(formProps: FormElementProps, formId: string): string[] {
     const lines: string[] = []
     const variant = formProps.actionsVariant || 'default'
     const align = formProps.actionsAlign || (variant === 'default' ? 'right' : 'center')
@@ -574,73 +574,83 @@ export class VueGenerator {
       actionStyle.borderTop = '1px solid #efefef'
     }
 
+    // 生成表单数据对象名（驼峰命名）
+    const formDataName = this.getFormDataName(formId)
+
     const styleStr = this.formatStyle(actionStyle)
     lines.push(`${this.indentStr()}<div class="pb-form-actions"${styleStr}>`)
     this.indent++
+    // 提交按钮绑定 handleSubmit 方法
     lines.push(
-      `${this.indentStr()}<${this.antPrefix}-button type="primary" html-type="submit" class="pb-form-submit">${formProps.submitLabel || '提交'}</${this.antPrefix}-button>`
+      `${this.indentStr()}<${this.antPrefix}-button type="primary" @click="handleSubmit_${formDataName}" class="pb-form-submit">${formProps.submitLabel || '提交'}</${this.antPrefix}-button>`
     )
+    // 取消按钮绑定 handleReset 方法
     lines.push(
-      `${this.indentStr()}<${this.antPrefix}-button class="pb-form-cancel">${formProps.cancelLabel || '取消'}</${this.antPrefix}-button>`
+      `${this.indentStr()}<${this.antPrefix}-button @click="handleReset_${formDataName}" class="pb-form-cancel">${formProps.cancelLabel || '取消'}</${this.antPrefix}-button>`
     )
     this.indent--
     lines.push(`${this.indentStr()}</div>`)
     return lines
   }
 
-  private generateFormFieldControl(field: FormFieldConfig, indentLevel: number): string[] {
+  // 根据表单ID生成数据对象名
+  private getFormDataName(formId: string): string {
+    // 移除非字母数字字符，转为驼峰命名
+    return 'form_' + formId.replace(/[^a-zA-Z0-9]/g, '_')
+  }
+
+  private generateFormFieldControl(field: FormFieldConfig, indentLevel: number, formId: string): string[] {
     const component = field.component
     const controlProps: Record<string, any> = { ...(field.componentProps || {}) }
     const placeholder = controlProps.placeholder ?? field.placeholder
     if (placeholder !== undefined) {
       controlProps.placeholder = placeholder
     }
+    const fieldName = field.name || field.id
     if (!controlProps.name) {
-      controlProps.name = field.name || field.id
-    }
-    if (field.required && component !== 'switch') {
-      controlProps.required = controlProps.required ?? true
+      controlProps.name = fieldName
     }
 
     const controlStyle = controlProps.style as Record<string, string | number> | undefined
     delete controlProps.style
-
-    const defaultValue = controlProps.defaultValue
     delete controlProps.defaultValue
 
     const options = this.getFieldOptions(field)
 
+    // 生成 v-model 绑定路径
+    const formDataName = this.getFormDataName(formId)
+    const vModelPath = `${formDataName}.${fieldName}`
+
     switch (component) {
       case 'textarea':
-        return this.generatePseudoElementControl('a-textarea', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-textarea', controlProps, controlStyle, indentLevel, vModelPath)
       case 'select':
         if (options.length && controlProps.options === undefined) {
           controlProps.options = options
         }
-        return this.generatePseudoElementControl('a-select', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-select', controlProps, controlStyle, indentLevel, vModelPath)
       case 'radio':
         if (options.length && controlProps.options === undefined) {
           controlProps.options = options
         }
-        return this.generatePseudoElementControl('a-radio-group', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-radio-group', controlProps, controlStyle, indentLevel, vModelPath)
       case 'checkbox':
         if (options.length && controlProps.options === undefined) {
           controlProps.options = options
         }
-        return this.generatePseudoElementControl('a-checkbox-group', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-checkbox-group', controlProps, controlStyle, indentLevel, vModelPath)
       case 'number':
-        return this.generatePseudoElementControl('a-input-number', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-input-number', controlProps, controlStyle, indentLevel, vModelPath)
       case 'date':
-        return this.generatePseudoElementControl('a-date-picker', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-date-picker', controlProps, controlStyle, indentLevel, vModelPath)
       case 'switch':
-        return this.generatePseudoElementControl('a-switch', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-switch', controlProps, controlStyle, indentLevel, vModelPath)
       case 'input':
       case 'text':
       case 'email':
       case 'password':
       case 'phone':
-        // 普通输入框统一使用 Ant Design Input
-        return this.generatePseudoElementControl('a-input', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-input', controlProps, controlStyle, indentLevel, vModelPath)
       case 'a-input':
       case 'a-textarea':
       case 'a-select':
@@ -654,11 +664,25 @@ export class VueGenerator {
         if (options.length && controlProps.options === undefined) {
           controlProps.options = options
         }
-        return this.generatePseudoElementControl(component as ElementType, controlProps, controlStyle, indentLevel)
+        return this.generateFormControl(component as ElementType, controlProps, controlStyle, indentLevel, vModelPath)
       default:
-        // 默认也使用 Ant Design Input
-        return this.generatePseudoElementControl('a-input', controlProps, controlStyle, indentLevel)
+        return this.generateFormControl('a-input', controlProps, controlStyle, indentLevel, vModelPath)
     }
+  }
+
+  // 生成带 v-model 的表单控件
+  private generateFormControl(
+    type: ElementType,
+    props: Record<string, any>,
+    style: Record<string, string | number> | undefined,
+    indentLevel: number,
+    vModelPath: string
+  ): string[] {
+    const indent = this.getIndentFor(indentLevel)
+    const tag = this.getElementTag(type, props)
+    const propsStr = this.formatProps(props, false)
+    const styleStr = this.formatStyle(style)
+    return [`${indent}<${tag} v-model="${vModelPath}"${propsStr}${styleStr} />`]
   }
 
   private generatePseudoElementControl(
@@ -813,194 +837,145 @@ ${style}
 export default {
   name: '${componentName}',
   // Auto-generated by Page Builder
-  // Each element has a pb-{type} class name for easy searching and locating in code
 }
 </script>`
     }
 
-    const formConfigs = this.formContexts.map(context => ({
-      formId: context.formId,
-      fields: Array.isArray(context.props.fields)
-        ? context.props.fields.map(field => ({
-            id: field.id,
-            name: field.name,
-            component: field.component,
-            dependencies: field.dependencies || [],
-          }))
-        : [],
-    }))
+    // 生成表单数据对象和验证规则
+    const dataLines: string[] = []
+    const validationRules: string[] = []
+    const submitMethods: string[] = []
+    const resetMethods: string[] = []
 
-    const formsJson = JSON.stringify(formConfigs, null, 2)
-      .split('\n')
-      .map(line => '      ' + line)
-      .join('\n')
+    this.formContexts.forEach(context => {
+      const formDataName = this.getFormDataName(context.formId)
+      const fields = Array.isArray(context.props.fields) ? context.props.fields : []
+      
+      // 生成表单数据对象初始值
+      const fieldDefaults: Record<string, string> = {}
+      const fieldRules: Array<{ name: string; required: boolean; rules: Array<{ type: string; message: string }> }> = []
+      
+      fields.forEach(field => {
+        const fieldName = field.name || field.id
+        // 根据组件类型设置默认值
+        switch (field.component) {
+          case 'checkbox':
+          case 'a-checkbox-group':
+            fieldDefaults[fieldName] = '[]'
+            break
+          case 'switch':
+          case 'a-switch':
+            fieldDefaults[fieldName] = 'false'
+            break
+          case 'number':
+          case 'a-input-number':
+            fieldDefaults[fieldName] = 'null'
+            break
+          default:
+            fieldDefaults[fieldName] = "''"
+        }
+        
+        // 收集验证规则
+        if (field.required || (field.validations && field.validations.length)) {
+          const rules: Array<{ type: string; message: string }> = []
+          if (field.required) {
+            rules.push({ type: 'required', message: `${field.label || fieldName}不能为空` })
+          }
+          if (field.validations) {
+            field.validations.forEach(v => {
+              rules.push({ type: v.type, message: v.message || `${field.label || fieldName}格式不正确` })
+            })
+          }
+          fieldRules.push({ name: fieldName, required: !!field.required, rules })
+        }
+      })
+      
+      // 生成 data 中的表单对象
+      const fieldsStr = Object.entries(fieldDefaults)
+        .map(([k, v]) => `        ${k}: ${v}`)
+        .join(',\n')
+      dataLines.push(`      ${formDataName}: {\n${fieldsStr}\n      }`)
+      
+      // 生成验证规则
+      if (fieldRules.length) {
+        const rulesStr = fieldRules.map(fr => {
+          const ruleItems = fr.rules.map(r => `{ type: '${r.type}', message: '${r.message}' }`).join(', ')
+          return `        ${fr.name}: [${ruleItems}]`
+        }).join(',\n')
+        validationRules.push(`      ${formDataName}Rules: {\n${rulesStr}\n      }`)
+      }
+      
+      // 生成提交方法
+      submitMethods.push(`    // 提交表单 ${formDataName}
+    handleSubmit_${formDataName}() {
+      // 执行验证
+      const errors = this.validate_${formDataName}()
+      if (errors.length > 0) {
+        console.warn('[表单验证失败]', errors)
+        this.$message ? this.$message.error(errors[0]) : alert(errors[0])
+        return
+      }
+      // 获取表单数据
+      const formData = { ...this.${formDataName} }
+      console.log('[表单提交]', formData)
+      // TODO: 在此处添加提交逻辑，如调用API
+      this.$emit('submit', { formId: '${context.formId}', data: formData })
+    }`)
+      
+      // 生成重置方法
+      const resetFieldsStr = Object.entries(fieldDefaults)
+        .map(([k, v]) => `      this.${formDataName}.${k} = ${v}`)
+        .join('\n')
+      resetMethods.push(`    // 重置表单 ${formDataName}
+    handleReset_${formDataName}() {
+${resetFieldsStr}
+      console.log('[表单重置]', '${context.formId}')
+    }`)
+      
+      // 生成验证方法
+      if (fieldRules.length) {
+        const validateChecks = fieldRules.map(fr => {
+          const checks: string[] = []
+          fr.rules.forEach(r => {
+            if (r.type === 'required') {
+              checks.push(`      if (!this.${formDataName}.${fr.name} && this.${formDataName}.${fr.name} !== 0) errors.push('${r.message}')`)
+            } else if (r.type === 'email') {
+              checks.push(`      if (this.${formDataName}.${fr.name} && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(this.${formDataName}.${fr.name})) errors.push('${r.message}')`)
+            } else if (r.type === 'phone') {
+              checks.push(`      if (this.${formDataName}.${fr.name} && !/^1[3-9]\\d{9}$/.test(this.${formDataName}.${fr.name})) errors.push('${r.message}')`)
+            }
+          })
+          return checks.join('\n')
+        }).join('\n')
+        
+        submitMethods.push(`    // 验证表单 ${formDataName}
+    validate_${formDataName}() {
+      const errors = []
+${validateChecks}
+      return errors
+    }`)
+      } else {
+        submitMethods.push(`    // 验证表单 ${formDataName}（无验证规则）
+    validate_${formDataName}() {
+      return []
+    }`)
+      }
+    })
+
+    const allDataLines = [...dataLines, ...validationRules].join(',\n')
+    const allMethods = [...submitMethods, ...resetMethods].join(',\n')
 
     return `<script>
 export default {
   name: '${componentName}',
   data() {
     return {
-      formValues: {},
-      formConfigs: ${formsJson.replace(/^      /, '')},
+${allDataLines}
     }
   },
-  mounted() {
-    this.$nextTick(() => {
-      this.formConfigs.forEach(config => {
-        this.$set ? this.$set(this.formValues, config.formId, {}) : (this.formValues[config.formId] = {})
-        this.attachFormListeners(config.formId)
-        this.applyDependencies(config.formId)
-      })
-    })
-  },
-  beforeDestroy() {
-    this.formConfigs.forEach(config => this.detachFormListeners(config.formId))
-  },
   methods: {
-    attachFormListeners(formId) {
-      const formEl = this.getFormElement(formId)
-      if (!formEl) return
-      const handler = () => this.handleFormInteraction(formId)
-      formEl.__pbFormHandler = handler
-      formEl.addEventListener('input', handler)
-      formEl.addEventListener('change', handler)
-    },
-    detachFormListeners(formId) {
-      const formEl = this.getFormElement(formId)
-      if (!formEl || !formEl.__pbFormHandler) return
-      formEl.removeEventListener('input', formEl.__pbFormHandler)
-      formEl.removeEventListener('change', formEl.__pbFormHandler)
-      delete formEl.__pbFormHandler
-    },
-    getFormElement(formId) {
-      if (!this.$el) return null
-      return this.$el.querySelector('[data-form-id="' + formId + '"]')
-    },
-    handleFormInteraction(formId) {
-      const values = this.collectFormValues(formId)
-      if (this.$set) {
-        this.$set(this.formValues, formId, values)
-      } else {
-        this.formValues[formId] = values
-      }
-      this.applyDependencies(formId)
-    },
-    collectFormValues(formId) {
-      const formEl = this.getFormElement(formId)
-      if (!formEl) return {}
-      const formData = new FormData(formEl)
-      const result = {}
-      formData.forEach((value, key) => {
-        const normalized = typeof value === 'string' ? value : ''
-        if (result[key] === undefined) {
-          result[key] = normalized
-        } else if (Array.isArray(result[key])) {
-          result[key].push(normalized)
-        } else {
-          result[key] = [result[key], normalized]
-        }
-      })
-      return result
-    },
-    handleFormSubmit(formId) {
-      const values = this.collectFormValues(formId)
-      if (this.$set) {
-        this.$set(this.formValues, formId, values)
-      } else {
-        this.formValues[formId] = values
-      }
-      console.log('[Form Submit]', formId, values)
-      if (this.$emit) {
-        this.$emit('form-submit', { formId, values })
-      }
-    },
-    handleFormReset(formId) {
-      const formEl = this.getFormElement(formId)
-      if (formEl) {
-        formEl.reset()
-      }
-      if (this.$set) {
-        this.$set(this.formValues, formId, {})
-      } else {
-        this.formValues[formId] = {}
-      }
-      this.$nextTick(() => this.applyDependencies(formId))
-    },
-    applyDependencies(formId) {
-      const formEl = this.getFormElement(formId)
-      if (!formEl) return
-      const values = this.formValues[formId] || {}
-      const fieldNodes = formEl.querySelectorAll('[data-field-id]')
-      fieldNodes.forEach(node => {
-        const depsText = node.getAttribute('data-field-dependencies')
-        if (!depsText) return
-        let visible = true
-        let disabled = false
-        try {
-          const depList = JSON.parse(depsText)
-          depList.forEach(dep => {
-            const matches = this.evaluateDependency(dep, values)
-            if (dep.action === 'hide' && matches) {
-              visible = false
-            }
-            if (dep.action === 'show') {
-              visible = matches
-            }
-            if (dep.action === 'disable' && matches) {
-              disabled = true
-            }
-            if (dep.action === 'enable') {
-              disabled = !matches ? disabled : false
-            }
-          })
-        } catch (error) {
-          console.warn('Failed to parse dependencies', error)
-        }
-        node.style.display = visible ? '' : 'none'
-        this.setFieldDisabled(node, disabled)
-      })
-    },
-    evaluateDependency(dep, values) {
-      const sourceValue = values[dep.sourceFieldId]
-      const expected = dep.value
-      switch (dep.operator) {
-        case 'equals':
-          return JSON.stringify(sourceValue) === JSON.stringify(expected)
-        case 'notEquals':
-          return JSON.stringify(sourceValue) !== JSON.stringify(expected)
-        case 'includes':
-          if (Array.isArray(sourceValue)) {
-            if (Array.isArray(expected)) {
-              return expected.every(val => sourceValue.includes(val))
-            }
-            return sourceValue.includes(expected)
-          }
-          if (typeof sourceValue === 'string' && typeof expected === 'string') {
-            return sourceValue.includes(expected)
-          }
-          return false
-        case 'in':
-          if (Array.isArray(expected)) {
-            return expected.includes(sourceValue)
-          }
-          return sourceValue === expected
-        default:
-          return false
-      }
-    },
-    setFieldDisabled(node, disabled) {
-      const controls = node.querySelectorAll('input, select, textarea, button, .ant-select, .ant-radio-group, .ant-checkbox-group')
-      controls.forEach(control => {
-        if ('disabled' in control) {
-          control.disabled = disabled
-        } else if (disabled) {
-          control.classList.add('pb-field-disabled')
-        } else {
-          control.classList.remove('pb-field-disabled')
-        }
-      })
-    },
-  },
+${allMethods}
+  }
 }
 </script>`
   }
