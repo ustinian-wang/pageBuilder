@@ -71,7 +71,18 @@ export function VueRunnerModal({ open, onClose, initialCode, autoRunKey }: VueRu
   const [sandboxReady, setSandboxReady] = useState(false)
   const [pendingCode, setPendingCode] = useState<string | null>(null)
   const [runtimeError, setRuntimeError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(codeRef.current)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      console.error('复制失败')
+    }
+  }, [])
 
   const runPreview = useCallback(
     (customCode?: string) => {
@@ -172,8 +183,23 @@ export function VueRunnerModal({ open, onClose, initialCode, autoRunKey }: VueRu
       </div>
       <div className="flex-1 flex gap-4 p-6 text-white overflow-hidden">
         <div className="flex-1 flex flex-col bg-slate-900/60 rounded-xl border border-white/5">
-          <div className="px-4 py-2 border-b border-white/5 text-sm uppercase tracking-wide text-white/60">
-            SFC 源码
+          <div className="px-4 py-2 border-b border-white/5 text-sm uppercase tracking-wide text-white/60 flex items-center justify-between">
+            <span>SFC 源码</span>
+            <button
+              onClick={handleCopy}
+              className="p-1.5 rounded hover:bg-white/10 transition-colors"
+              title="复制代码"
+            >
+              {copied ? (
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-white/60 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
           </div>
           <textarea
             value={code}

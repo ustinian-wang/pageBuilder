@@ -1388,12 +1388,15 @@ export default function BuilderPage() {
 
       const result = await response.json()
       if (result.success) {
-        setGeneratedCode(result.data.code)
         setGeneratedComponentName(result.data.componentName)
         if (options?.openVueRunner) {
+          // 运行代码时只打开 VueRunner，不显示代码查看器
           setVueRunnerCode(result.data.code)
           setShowVueRunner(true)
           setVueRunnerRunKey(Date.now())
+        } else {
+          // 仅查看代码时显示代码查看器
+          setGeneratedCode(result.data.code)
         }
       } else {
         alert('生成代码失败：' + result.error)

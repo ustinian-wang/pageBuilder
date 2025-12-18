@@ -612,32 +612,52 @@ export class VueGenerator {
 
     switch (component) {
       case 'textarea':
-        return this.generateNativeTextarea(controlProps, controlStyle, defaultValue, indentLevel)
+        return this.generatePseudoElementControl('a-textarea', controlProps, controlStyle, indentLevel)
       case 'select':
-        return this.generateNativeSelect(controlProps, controlStyle, options, indentLevel, placeholder)
+        if (options.length && controlProps.options === undefined) {
+          controlProps.options = options
+        }
+        return this.generatePseudoElementControl('a-select', controlProps, controlStyle, indentLevel)
       case 'radio':
-        return this.generateNativeChoiceGroup('radio', controlProps, controlStyle, options, indentLevel)
+        if (options.length && controlProps.options === undefined) {
+          controlProps.options = options
+        }
+        return this.generatePseudoElementControl('a-radio-group', controlProps, controlStyle, indentLevel)
       case 'checkbox':
-        return this.generateNativeChoiceGroup('checkbox', controlProps, controlStyle, options, indentLevel)
+        if (options.length && controlProps.options === undefined) {
+          controlProps.options = options
+        }
+        return this.generatePseudoElementControl('a-checkbox-group', controlProps, controlStyle, indentLevel)
       case 'number':
-        controlProps.type = 'number'
-        return this.generatePseudoElementControl('input', controlProps, controlStyle, indentLevel)
+        return this.generatePseudoElementControl('a-input-number', controlProps, controlStyle, indentLevel)
       case 'date':
-        controlProps.type = 'date'
-        return this.generatePseudoElementControl('input', controlProps, controlStyle, indentLevel)
+        return this.generatePseudoElementControl('a-date-picker', controlProps, controlStyle, indentLevel)
       case 'switch':
-        return this.generateNativeSwitch(controlProps, controlStyle, placeholder, indentLevel)
+        return this.generatePseudoElementControl('a-switch', controlProps, controlStyle, indentLevel)
+      case 'input':
+      case 'text':
+      case 'email':
+      case 'password':
+      case 'phone':
+        // 普通输入框统一使用 Ant Design Input
+        return this.generatePseudoElementControl('a-input', controlProps, controlStyle, indentLevel)
       case 'a-input':
+      case 'a-textarea':
       case 'a-select':
       case 'a-radio':
+      case 'a-radio-group':
       case 'a-checkbox':
+      case 'a-checkbox-group':
       case 'a-switch':
+      case 'a-input-number':
+      case 'a-date-picker':
         if (options.length && controlProps.options === undefined) {
           controlProps.options = options
         }
         return this.generatePseudoElementControl(component as ElementType, controlProps, controlStyle, indentLevel)
       default:
-        return this.generatePseudoElementControl('input', controlProps, controlStyle, indentLevel)
+        // 默认也使用 Ant Design Input
+        return this.generatePseudoElementControl('a-input', controlProps, controlStyle, indentLevel)
     }
   }
 
