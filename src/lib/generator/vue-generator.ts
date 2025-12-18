@@ -578,10 +578,10 @@ export class VueGenerator {
     lines.push(`${this.indentStr()}<div class="pb-form-actions"${styleStr}>`)
     this.indent++
     lines.push(
-      `${this.indentStr()}<button type="submit" class="pb-form-submit">${formProps.submitLabel || '提交'}</button>`
+      `${this.indentStr()}<${this.antPrefix}-button type="primary" html-type="submit" class="pb-form-submit">${formProps.submitLabel || '提交'}</${this.antPrefix}-button>`
     )
     lines.push(
-      `${this.indentStr()}<button type="button" class="pb-form-cancel">${formProps.cancelLabel || '取消'}</button>`
+      `${this.indentStr()}<${this.antPrefix}-button class="pb-form-cancel">${formProps.cancelLabel || '取消'}</${this.antPrefix}-button>`
     )
     this.indent--
     lines.push(`${this.indentStr()}</div>`)
