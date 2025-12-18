@@ -62,7 +62,7 @@ button:hover {
 `
 
 export function VueRunnerModal({ open, onClose, initialCode, autoRunKey }: VueRunnerModalProps) {
-  const [code, setCode] = useState(DEFAULT_SFC)
+  const [code, setCode] = useState(() => initialCode || DEFAULT_SFC)
   const codeRef = useRef(code)
   useEffect(() => {
     codeRef.current = code
@@ -92,13 +92,18 @@ export function VueRunnerModal({ open, onClose, initialCode, autoRunKey }: VueRu
       setSandboxKey((key) => key + 1)
       setSandboxReady(false)
       setRuntimeError(null)
-      setPendingCode(code)
+      if (initialCode) {
+        setCode(initialCode)
+        setPendingCode(initialCode)
+      } else {
+        setPendingCode(codeRef.current)
+      }
     } else if (!open && previousOpenRef.current) {
       setSandboxReady(false)
       setPendingCode(null)
     }
     previousOpenRef.current = open
-  }, [open, code])
+  }, [open, initialCode])
 
   useEffect(() => {
     if (!open || !autoRunKey) return
